@@ -14,7 +14,7 @@ class bern_emb_data():
         #url = 'http://mattmahoney.net/dc/'
         #filename = maybe_download(url, 'text8.zip', 31344016)
         #filename = '/Users/jose.mena/Dropbox/Jose/PhD/data/recipes.txt.zip'
-        filename = '/Users/jose.mena/dev/personal/data/wiki/wiki.txt.zip'
+        filename = '../data/wiki/wiki.txt.zip'
         words = read_data(filename)
         self.build_dataset(words)
         self.batch = self.batch_generator()
