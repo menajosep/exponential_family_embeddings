@@ -11,8 +11,10 @@ class bern_emb_data():
         self.ns = ns
         self.n_minibatch = n_minibatch
         self.L = L
-        url = 'http://mattmahoney.net/dc/'
-        filename = maybe_download(url, 'text8.zip', 31344016)
+        #url = 'http://mattmahoney.net/dc/'
+        #filename = maybe_download(url, 'text8.zip', 31344016)
+        #filename = '/Users/jose.mena/Dropbox/Jose/PhD/data/recipes.txt.zip'
+        filename = '/Users/jose.mena/dev/personal/data/wiki/wiki.txt.zip'
         words = read_data(filename)
         self.build_dataset(words)
         self.batch = self.batch_generator()
@@ -46,7 +48,6 @@ class bern_emb_data():
             for word in self.labels:
                 txt.write(word+'\n')
 
-
     def batch_generator(self):
         batch_size = self.n_minibatch + self.cs
         data = self.data
@@ -61,3 +62,9 @@ class bern_emb_data():
     
     def feed(self, placeholder):
         return {placeholder: self.batch.next()}
+
+    def feed_with_labels(self, placeholder,y_pos_ph, y_neg_ph):
+        batch = self.batch.next()
+        return {placeholder: batch,
+                y_pos_ph: np.ones((self.n_minibatch,1), dtype=np.int32),
+                y_neg_ph: np.zeros((self.n_minibatch, self.ns), dtype=np.int32)}
