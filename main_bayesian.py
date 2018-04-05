@@ -26,7 +26,7 @@ def get_n_iters():
     n_batches = len(d.data) / d.n_minibatch
     if len(d.data) % d.n_minibatch > 0:
         n_batches += 1
-    return int(n_batches) * args.n_epochs, n_batches
+    return int(n_batches) * args.n_epochs, int(n_batches)
 
 
 # TRAINING
@@ -37,7 +37,7 @@ sess.run(init)
 for i in range(m.inference.n_iter):
     info_dict = m.inference.update(feed_dict=d.feed_with_labels(m.placeholders, m.y_pos_ph, m.y_neg_ph))
     m.inference.print_progress(info_dict)
-    if n_batches % i == 0:
+    if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 
 print('training finished. Results are saved in '+dir_name)
