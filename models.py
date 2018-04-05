@@ -188,60 +188,40 @@ class bayesian_emb_model():
             tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
         self.sigV = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
-        self.qU = Normal(loc=tf.get_variable("qw/loc", [d.L, self.K]), scale=self.sigU)
-        self.qV = Normal(loc=tf.get_variable("qb/loc", [d.L, self.K]), scale=self.sigV)
+        self.qU = Normal(loc=tf.get_variable("qU/loc", [d.L, self.K]), scale=self.sigU)
+        self.qV = Normal(loc=tf.get_variable("qV/loc", [d.L, self.K]), scale=self.sigV)
 
 
         with self.sess.as_default():
             tf.global_variables_initializer().run()
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.y_pos: self.y_pos_ph,
                                                                            self.y_neg: self.y_neg_ph})
-        #variable_summaries('rho', self.rho)
-        #variable_summaries('alpha', self.alpha)
-        #with tf.name_scope('objective'):
-             ##tf.summary.scalar('loss', self.loss)
-        #     tf.summary.scalar('priors', self.log_prior)
-             ##tf.summary.scalar('ll_pos', self.ll_pos)
-             ##tf.summary.scalar('ll_neg', self.ll_neg)
         self.summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
         self.saver = tf.train.Saver()
-        # config = projector.ProjectorConfig()
-        #
-        # alpha = config.embeddings.add()
-        # alpha.tensor_name = 'model/embeddings/alpha'
-        # alpha.metadata_path = '../vocab.tsv'
-        # rho = config.embeddings.add()
-        # rho.tensor_name = 'model/embeddings/rho'
-        # rho.metadata_path = '../vocab.tsv'
-        # projector.visualize_embeddings(self.train_writer, config)
+        config = projector.ProjectorConfig()
 
-    def dump(self, fname, dictionary, n_samples):
+        alpha = config.embeddings.add()
+        alpha.tensor_name = 'qU/loc'
+        alpha.metadata_path = '../vocab.tsv'
+        rho = config.embeddings.add()
+        rho.tensor_name = 'qV/loc'
+        rho.metadata_path = '../vocab.tsv'
+        projector.visualize_embeddings(self.train_writer, config)
+
+    def dump(self, fname, labels, n_samples):
 
         with self.sess.as_default():
 
             dat = {'rhos': np.average(self.U.sample(n_samples).eval(), axis=0),
                    'alpha': np.average(self.V.sample(n_samples).eval(), axis=0),
                    'sigma_rhos': self.sigU.eval()[:, 0],
-                   'sigma_alphas': self.sigU.eval()[:, 0],
-                   'words': self.build_words_list(dictionary, len(self.sigU.eval()))}
+                   'sigma_alphas': self.sigV.eval()[:, 0],
+                   'words': self.build_words_list(labels, len(self.sigU.eval()))}
             pickle.dump(dat, open(fname, "a+"))
 
-    def build_words_list(self, dictionary, list_length):
-        words = dictionary.keys()
-        if len(words) < list_length:
-            empty_list = ['']*(list_length-len(words))
-            words.extend(empty_list)
-        return words
-
-    def plot_params(self, dir_name, labels):
-        plot_only = len(labels)
-
-        with self.sess.as_default():
-            tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-            low_dim_embs_alpha2 = tsne.fit_transform(self.alpha.eval()[:plot_only])
-            plot_with_labels(low_dim_embs_alpha2[:plot_only], labels[:plot_only], dir_name + '/alpha.eps')
-
-            tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-            low_dim_embs_rho2 = tsne.fit_transform(self.rho.eval()[:plot_only])
-            plot_with_labels(low_dim_embs_rho2[:plot_only], labels[:plot_only], dir_name + '/rho.eps')
+    def build_words_list(self, labels, list_length):
+        if len(labels) < list_length:
+            empty_list = ['']*(list_length-len(labels))
+            labels.extend(empty_list)
+        return labels

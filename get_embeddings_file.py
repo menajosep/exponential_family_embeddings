@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-variational_datafile = '/Users/jose.mena/dev/personal/exponential_family_embeddings/fits/fit18_04_04_15_55_17/variational.dat'
+variational_datafile = '/Users/jose.mena/dev/personal/exponential_family_embeddings/fits/variational.dat'
 variational_data = pickle.load(open(variational_datafile, 'rb'))
 rhos = variational_data['rhos']
 vocabulary_file = '/Users/jose.mena/dev/personal/exponential_family_embeddings/fits/vocab.tsv'
