@@ -37,7 +37,7 @@ sess.run(init)
 for i in range(m.inference.n_iter):
     info_dict = m.inference.update(feed_dict=d.feed_with_labels(m.placeholders, m.y_pos_ph, m.y_neg_ph))
     m.inference.print_progress(info_dict)
-    if i % n_batches == 0:
+    if n_batches % i == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 
 print('training finished. Results are saved in '+dir_name)
