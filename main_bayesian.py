@@ -39,6 +39,6 @@ for i in range(m.inference.n_iter):
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
-
+m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 print('training finished. Results are saved in '+dir_name)
 m.dump(dir_name+"/variational.dat", d.labels, 100)
