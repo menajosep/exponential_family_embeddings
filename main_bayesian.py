@@ -23,8 +23,8 @@ m = bayesian_emb_model(d, args.K, args.sig, sess, dir_name)
 
 
 def get_n_iters():
-    n_batches = len(d.data) / d.n_minibatch
-    if len(d.data) % d.n_minibatch > 0:
+    n_batches = len(d.word_target) / d.n_minibatch
+    if len(d.word_target) % d.n_minibatch > 0:
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
 
@@ -35,10 +35,14 @@ m.inference.initialize(n_samples=5, n_iter=n_iters, logdir=m.logdir)
 init = tf.global_variables_initializer()
 sess.run(init)
 for i in range(m.inference.n_iter):
-    info_dict = m.inference.update(feed_dict=d.feed_with_labels(m.placeholders, m.y_pos_ph, m.y_neg_ph))
+    info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
+                                                    m.context_placeholder,
+                                                    m.labels_placeholder,
+                                                    m.y_pos_ph,
+                                                    m.y_neg_ph))
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 print('training finished. Results are saved in '+dir_name)
-m.dump(dir_name+"/variational.dat", d.labels, 100)
+m.dump(dir_name +"/variational.dat", d.words, 100)

@@ -35,4 +35,4 @@ for i in range(args.n_iter):
 
 print('training finished. Results are saved in '+dir_name)
 m.dump(dir_name+"/variational.dat")
-m.plot_params(dir_name, d.labels[:500])
+m.plot_params(dir_name, d.words[:500])

@@ -1,8 +1,7 @@
 import numpy as np
-import os
-import pandas as pd
-import pickle
 from utils import *
+from keras.preprocessing import sequence
+from keras.preprocessing.sequence import skipgrams
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -40,31 +39,50 @@ class bern_emb_data():
         self.data = np.array(data)
         self.count = count
         self.dictionary = dictionary
-        self.labels = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
-        unigram_dist = np.array([1.0*i for ii, i in count])
-        unigram_dist = (unigram_dist/unigram_dist.sum())**(3.0/4)
-        self.unigram = unigram_dist/unigram_dist.sum()
+        self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
+        sampling_table = sequence.make_sampling_table(len(dictionary))
+        couples, labels = skipgrams(data,
+                                    len(dictionary),
+                                    window_size=self.cs,
+                                    sampling_table=sampling_table,
+                                    negative_samples=self.ns)
+        del data
+        self.labels = np.array(labels)
+        # labels[labels == 0] = -1
+        word_target, word_context = zip(*couples)
+        del couples
+        self.word_target = np.array(word_target, dtype="int32")
+        self.word_context = np.array(word_context, dtype="int32")
         with open('fits/vocab.tsv', 'w') as txt:
-            for word in self.labels:
+            for word in self.words:
                 txt.write(word+'\n')
 
     def batch_generator(self):
-        batch_size = self.n_minibatch + self.cs
-        data = self.data
+        batch_size = self.n_minibatch
+        data_target = self.word_target
+        data_context = self.word_context
+        data_labels = self.labels
         while True:
-            if data.shape[0] < batch_size:
-                data = np.hstack([data, self.data])
-                if data.shape[0] < batch_size:
+            if data_target.shape[0] < batch_size:
+                data_target = np.hstack([data_target, self.word_target])
+                data_context = np.hstack([data_context, self.word_context])
+                data_labels = np.hstack([data_labels, self.labels])
+                if data_target.shape[0] < batch_size:
                     continue
-            words = data[:batch_size]
-            data = data[batch_size:]
-            yield words
+            words_target = data_target[:batch_size]
+            words_context = data_context[:batch_size]
+            labels = data_labels[:batch_size]
+            data_target = data_target[batch_size:]
+            data_context = data_context[batch_size:]
+            data_labels = data_labels[batch_size:]
+            yield words_target, words_context, labels
     
-    def feed(self, placeholder):
-        return {placeholder: self.batch.next()}
+    def feed(self, target_placeholder, context_placeholder, labels_placeholder, y_pos_ph, y_neg_ph):
+        words_target, words_context, labels = self.batch.next()
+        return {target_placeholder: words_target,
+                context_placeholder: words_context,
+                labels_placeholder: labels,
+                y_pos_ph: np.ones((self.n_minibatch), dtype=np.int32),
+                y_neg_ph: np.zeros((self.n_minibatch), dtype=np.int32)
+                }
 
-    def feed_with_labels(self, placeholder,y_pos_ph, y_neg_ph):
-        batch = self.batch.next()
-        return {placeholder: batch,
-                y_pos_ph: np.ones((self.n_minibatch,1), dtype=np.int32),
-                y_neg_ph: np.zeros((self.n_minibatch, self.ns), dtype=np.int32)}

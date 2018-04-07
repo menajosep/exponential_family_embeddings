@@ -141,18 +141,13 @@ class bayesian_emb_model():
         with tf.name_scope('model'):
             # Data Placeholder
             with tf.name_scope('input'):
-                self.placeholders = tf.placeholder(tf.int32, shape=[d.n_minibatch+d.cs])
-                self.words = self.placeholders
-                self.y_pos_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch, 1])
-                self.y_neg_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch, d.ns])
+                self.target_placeholder = tf.placeholder(tf.int32)
+                self.context_placeholder = tf.placeholder(tf.int32)
+                self.labels_placeholder = tf.placeholder(tf.int32)
+                self.y_pos_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
+                self.y_neg_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
 
             # Index Masks
-            with tf.name_scope('context_mask'):
-                self.p_mask = tf.cast(tf.range(d.cs / 2, d.n_minibatch + d.cs / 2), tf.int32)
-                rows = tf.cast(tf.tile(tf.expand_dims(tf.range(0, d.cs / 2), [0]), [d.n_minibatch, 1]), tf.int32)
-                columns = tf.cast(tf.tile(tf.expand_dims(tf.range(0, d.n_minibatch), [1]), [1, d.cs / 2]), tf.int32)
-                self.ctx_mask = tf.concat([rows + columns, rows + columns + d.cs / 2 + 1], 1)
-
             with tf.name_scope('priors'):
                 self.U = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32), scale=tf.ones((d.L, self.K), dtype=tf.float32))
                 self.V = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32), scale=tf.ones((d.L, self.K), dtype=tf.float32))
@@ -160,27 +155,24 @@ class bayesian_emb_model():
         with tf.name_scope('natural_param'):
             # Taget and Context Indices
             with tf.name_scope('target_word'):
-                self.p_idx = tf.gather(self.words, self.p_mask)
-                self.p_rho = tf.nn.embedding_lookup(self.U, self.p_idx)
+                self.p_rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
 
             # Negative samples
             with tf.name_scope('negative_samples'):
-                unigram_logits = tf.tile(tf.expand_dims(tf.log(tf.constant(d.unigram)), [0]), [d.n_minibatch, 1])
-                self.n_idx = tf.multinomial(unigram_logits, d.ns)
-                self.n_rho = tf.nn.embedding_lookup(self.U, self.n_idx)
+                self.n_rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
 
             with tf.name_scope('context'):
-                self.ctx_idx = tf.squeeze(tf.gather(self.words, self.ctx_mask))
-                self.ctx_alphas = tf.nn.embedding_lookup(self.V, self.ctx_idx)
+                self.ctx_alphas = tf.nn.embedding_lookup(self.V, self.context_placeholder)
 
             # Natural parameter
-            ctx_sum = tf.reduce_sum(self.ctx_alphas, [1])
-            self.p_eta = tf.expand_dims(tf.reduce_sum(tf.multiply(self.p_rho, ctx_sum), -1), 1)
-            self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, tf.tile(tf.expand_dims(ctx_sum, 1), [1, d.ns, 1])),-1)
+            self.p_eta = tf.reduce_sum(tf.multiply(self.p_rho, self.ctx_alphas), -1)
+            self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, self.ctx_alphas), -1)
 
             # Conditional likelihood
         self.y_pos = Bernoulli(logits=self.p_eta)
         self.y_neg = Bernoulli(logits=self.n_eta)
+
+        self.y_pos = self.labels_placeholder * self.y_pos + (1-self.labels_placeholder) * self.y_neg
 
 
         # INFERENCE
