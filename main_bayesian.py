@@ -23,8 +23,8 @@ m = bayesian_emb_model(d, args.K, args.sig, sess, dir_name)
 
 
 def get_n_iters():
-    n_batches = len(d.word_target) / d.n_minibatch
-    if len(d.word_target) % d.n_minibatch > 0:
+    n_batches = len(d.chars_target) / d.n_minibatch
+    if len(d.chars_target) % d.n_minibatch > 0:
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
 
@@ -45,4 +45,4 @@ for i in range(m.inference.n_iter):
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 print('training finished. Results are saved in '+dir_name)
-m.dump(dir_name +"/variational.dat", d.words, 100)
+m.dump(dir_name +"/variational.dat", d.chars, 100)

@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import os
 import tensorflow as tf
 import zipfile
+import pickle
 
 from six.moves import urllib
 
@@ -41,6 +42,13 @@ def read_data(filename):
   with zipfile.ZipFile(filename) as f:
     data = tf.compat.as_str(f.read(f.namelist()[0])).split()
   return data
+
+def read_data_as_chars(filename):
+  """Extract the first file enclosed in a zip file as a list of characters"""
+  with zipfile.ZipFile(filename) as f:
+    words_data = tf.compat.as_str(f.read(f.namelist()[0]))
+    chars_data = [ch for ch in words_data]
+  return chars_data
 
 def plot_with_labels(low_dim_embs, labels, fname):
     plt.figure(figsize=(28, 28))
