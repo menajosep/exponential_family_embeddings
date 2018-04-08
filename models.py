@@ -172,7 +172,7 @@ class bayesian_emb_model():
         self.y_pos = Bernoulli(logits=self.p_eta)
         self.y_neg = Bernoulli(logits=self.n_eta)
 
-        self.y_pos = self.labels_placeholder * self.y_pos + (1-self.labels_placeholder) * self.y_neg
+        self.y_pos = (self.y_pos ** self.labels_placeholder) * (self.y_neg ** (1-self.labels_placeholder))
 
 
         # INFERENCE
