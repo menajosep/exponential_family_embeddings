@@ -77,12 +77,11 @@ class bern_emb_data():
             data_labels = data_labels[batch_size:]
             yield words_target, words_context, labels
     
-    def feed(self, target_placeholder, context_placeholder, labels_placeholder, y_pos_ph, y_neg_ph):
+    def feed(self, target_placeholder, context_placeholder, labels_placeholder, y_ph):
         words_target, words_context, labels = self.batch.next()
         return {target_placeholder: words_target,
                 context_placeholder: words_context,
                 labels_placeholder: labels,
-                y_pos_ph: np.ones((self.n_minibatch), dtype=np.int32),
-                y_neg_ph: np.zeros((self.n_minibatch), dtype=np.int32)
+                y_ph: np.ones((self.n_minibatch), dtype=np.int32)
                 }
 

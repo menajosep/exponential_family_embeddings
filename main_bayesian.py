@@ -38,11 +38,14 @@ for i in range(m.inference.n_iter):
     info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
                                                     m.context_placeholder,
                                                     m.labels_placeholder,
-                                                    m.y_pos_ph,
-                                                    m.y_neg_ph))
+                                                    m.y_ph))
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 print('training finished. Results are saved in '+dir_name)
 m.dump(dir_name +"/variational.dat", d.words, 100)
+
+y_posterior = ed.copy(m.y, {m.U: m.qU, m.V: m.qV})
+
+print('Done')
