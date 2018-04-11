@@ -131,21 +131,13 @@ class bayesian_emb_model():
         self.sess = sess
         self.logdir = logdir
 
-        # from edward.models import Bernoulli, Normal
-        # U = Normal(loc=tf.zeros((W, E), dtype=tf.float32), scale=lam)
-        # V = Normal(loc=tf.zeros((W, E), dtype=tf.float32), scale=lam)
-        # u_n = tf.nn.embedding_lookup(U, indices_n_I)
-        # v_n = tf.nn.embedding_lookup(V, indices_n_J)
-        # z_n = Bernoulli(logits=tf.reduce_sum(u_n * v_n)
-
         with tf.name_scope('model'):
             # Data Placeholder
             with tf.name_scope('input'):
                 self.target_placeholder = tf.placeholder(tf.int32)
                 self.context_placeholder = tf.placeholder(tf.int32)
                 self.labels_placeholder = tf.placeholder(tf.int32)
-                self.y_pos_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
-                self.y_neg_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
+                self.y_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
 
             # Index Masks
             with tf.name_scope('priors'):
@@ -155,24 +147,16 @@ class bayesian_emb_model():
         with tf.name_scope('natural_param'):
             # Taget and Context Indices
             with tf.name_scope('target_word'):
-                self.p_rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
-
-            # Negative samples
-            with tf.name_scope('negative_samples'):
-                self.n_rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
+                self.rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
 
             with tf.name_scope('context'):
-                self.ctx_alphas = tf.nn.embedding_lookup(self.V, self.context_placeholder)
+                self.ctx_alpha = tf.nn.embedding_lookup(self.V, self.context_placeholder)
 
             # Natural parameter
-            self.p_eta = tf.reduce_sum(tf.multiply(self.p_rho, self.ctx_alphas), -1)
-            self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, self.ctx_alphas), -1)
+            self.eta = tf.reduce_sum(tf.multiply(self.rho, self.ctx_alpha), -1)
 
             # Conditional likelihood
-        self.y_pos = Bernoulli(logits=self.p_eta)
-        self.y_neg = Bernoulli(logits=self.n_eta)
-
-        self.y_pos = (self.y_pos ** self.labels_placeholder) * (self.y_neg ** (1-self.labels_placeholder))
+        self.y = (Bernoulli(logits=self.eta) ** self.labels_placeholder) * (Bernoulli(logits=self.eta) ** (1-self.labels_placeholder))
 
 
         # INFERENCE
@@ -186,8 +170,7 @@ class bayesian_emb_model():
 
         with self.sess.as_default():
             tf.global_variables_initializer().run()
-        self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.y_pos: self.y_pos_ph,
-                                                                           self.y_neg: self.y_neg_ph})
+        self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.y: self.y_ph})
         self.summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
         self.saver = tf.train.Saver()

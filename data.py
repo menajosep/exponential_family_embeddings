@@ -49,7 +49,6 @@ class bern_emb_data():
                                     negative_samples=self.ns)
         del data
         self.labels = np.array(labels)
-        # labels[labels == 0] = -1
         chars_target, chars_context = zip(*couples)
         del couples
         self.chars_target = np.array(chars_target, dtype="int32")
@@ -78,12 +77,11 @@ class bern_emb_data():
             data_labels = data_labels[batch_size:]
             yield chars_target, chars_context, labels
     
-    def feed(self, target_placeholder, context_placeholder, labels_placeholder, y_pos_ph, y_neg_ph):
+    def feed(self, target_placeholder, context_placeholder, labels_placeholder, y_ph):
         chars_target, chars_context, labels = self.batch.next()
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
-                y_pos_ph: np.ones((self.n_minibatch), dtype=np.int32),
-                y_neg_ph: np.zeros((self.n_minibatch), dtype=np.int32)
+                y_ph: np.ones((self.n_minibatch), dtype=np.int32)
                 }
 
