@@ -120,14 +120,9 @@ class bern_emb_model():
             plot_with_labels(low_dim_embs_rho2[:plot_only], labels[:plot_only], dir_name + '/rho.eps')
 
 
-
-
-
 class bayesian_emb_model():
-
-    def __init__(self, d, K, sig, sess, logdir):
+    def __init__(self, d, K, sess, logdir):
         self.K = K
-        self.sig = sig
         self.sess = sess
         self.logdir = logdir
 
@@ -136,41 +131,58 @@ class bayesian_emb_model():
             with tf.name_scope('input'):
                 self.target_placeholder = tf.placeholder(tf.int32)
                 self.context_placeholder = tf.placeholder(tf.int32)
-                self.labels_placeholder = tf.placeholder(tf.int32)
-                self.y_ph = tf.placeholder(tf.int32, shape=[d.n_minibatch])
+                self.labels_placeholder = tf.placeholder(tf.int32, shape=[d.n_minibatch])
+                self.ones_placeholder = tf.placeholder(tf.int32)
+                self.zeros_placeholder = tf.placeholder(tf.int32)
 
             # Index Masks
             with tf.name_scope('priors'):
-                self.U = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32), scale=tf.ones((d.L, self.K), dtype=tf.float32))
-                self.V = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32), scale=tf.ones((d.L, self.K), dtype=tf.float32))
+                self.U = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32),
+                                scale=tf.ones((d.L, self.K), dtype=tf.float32))
+                self.V = Normal(loc=tf.zeros((d.L, self.K), dtype=tf.float32),
+                                scale=tf.ones((d.L, self.K), dtype=tf.float32))
 
         with tf.name_scope('natural_param'):
             # Taget and Context Indices
             with tf.name_scope('target_word'):
-                self.rho = tf.nn.embedding_lookup(self.U, self.target_placeholder)
+                pos_indexes = tf.where(
+                    tf.equal(self.labels_placeholder, tf.ones(self.labels_placeholder.shape, dtype=tf.int32)))
+                pos_words = tf.gather(self.target_placeholder, pos_indexes)
+                self.p_rhos = tf.nn.embedding_lookup(self.U, pos_words)
+                pos_contexts = tf.gather(self.context_placeholder, pos_indexes)
+                self.pos_ctx_alpha = tf.nn.embedding_lookup(self.V, pos_contexts)
 
-            with tf.name_scope('context'):
-                self.ctx_alpha = tf.nn.embedding_lookup(self.V, self.context_placeholder)
+            with tf.name_scope('negative_samples'):
+                neg_indexes = tf.where(
+                    tf.equal(self.labels_placeholder, tf.zeros(self.labels_placeholder.shape, dtype=tf.int32)))
+                neg_words = tf.gather(self.target_placeholder, neg_indexes)
+                self.n_rho = tf.nn.embedding_lookup(self.U, neg_words)
+                neg_contexts = tf.gather(self.context_placeholder, neg_indexes)
+                self.neg_ctx_alpha = tf.nn.embedding_lookup(self.V, neg_contexts)
 
             # Natural parameter
-            self.eta = tf.reduce_sum(tf.multiply(self.rho, self.ctx_alpha), -1)
+            self.p_eta = tf.reduce_sum(tf.multiply(self.p_rhos, self.pos_ctx_alpha), -1)
+            self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, self.neg_ctx_alpha), -1)
 
-            # Conditional likelihood
-        self.y = (Bernoulli(logits=self.eta) ** self.labels_placeholder) * (Bernoulli(logits=self.eta) ** (1-self.labels_placeholder))
-
+        self.y_pos = Bernoulli(logits=self.p_eta)
+        self.y_neg = Bernoulli(logits=self.n_eta)
 
         # INFERENCE
         self.sigU = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
         self.sigV = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
-        self.qU = Normal(loc=tf.get_variable("qU/loc", [d.L, self.K]), scale=self.sigU)
-        self.qV = Normal(loc=tf.get_variable("qV/loc", [d.L, self.K]), scale=self.sigV)
+        self.qU = Normal(loc=tf.get_variable("qU/loc", [d.L, self.K], initializer=tf.zeros_initializer()),
+                         scale=self.sigU)
+        self.qV = Normal(loc=tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer()),
+                         scale=self.sigV)
 
-
+        self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV},
+                                 data={self.y_pos: self.ones_placeholder,
+                                       self.y_neg: self.zeros_placeholder
+                                       })
         with self.sess.as_default():
             tf.global_variables_initializer().run()
-        self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV}, data={self.y: self.y_ph})
         self.summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
         self.saver = tf.train.Saver()
@@ -185,9 +197,7 @@ class bayesian_emb_model():
         projector.visualize_embeddings(self.train_writer, config)
 
     def dump(self, fname, labels, n_samples):
-
         with self.sess.as_default():
-
             dat = {'rhos': np.average(self.U.sample(n_samples).eval(), axis=0),
                    'alpha': np.average(self.V.sample(n_samples).eval(), axis=0),
                    'sigma_rhos': self.sigU.eval()[:, 0],
@@ -197,6 +207,6 @@ class bayesian_emb_model():
 
     def build_words_list(self, labels, list_length):
         if len(labels) < list_length:
-            empty_list = ['']*(list_length-len(labels))
+            empty_list = [''] * (list_length - len(labels))
             labels.extend(empty_list)
         return labels

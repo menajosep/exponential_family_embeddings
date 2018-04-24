@@ -16,10 +16,10 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bern_emb_data(args.cs, args.ns, args.mb, args.L)
+d = bayessian_bern_emb_data(args.cs, args.ns, args.mb, args.L)
 
 # MODEL
-m = bayesian_emb_model(d, args.K, args.sig, sess, dir_name)
+m = bayesian_emb_model(d, args.K, sess, dir_name)
 
 
 def get_n_iters():
@@ -31,21 +31,25 @@ def get_n_iters():
 
 # TRAINING
 n_iters, n_batches = get_n_iters()
-m.inference.initialize(n_samples=5, n_iter=n_iters, logdir=m.logdir)
+
+m.inference.initialize(n_samples=10, n_iter=n_iters, logdir=m.logdir,
+                       scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
+                       kl_scaling={m.y_pos: n_batches, m.y_neg: n_batches / args.ns}
+                       )
 init = tf.global_variables_initializer()
 sess.run(init)
 for i in range(m.inference.n_iter):
     info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
                                                     m.context_placeholder,
                                                     m.labels_placeholder,
-                                                    m.y_ph))
+                                                    m.ones_placeholder,
+                                                    m.zeros_placeholder
+                                                    ))
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
-print('training finished. Results are saved in '+dir_name)
-m.dump(dir_name +"/variational.dat", d.words, 100)
-
-y_posterior = ed.copy(m.y, {m.U: m.qU, m.V: m.qV})
+print('training finished. Results are saved in ' + dir_name)
+m.dump(dir_name + "/variational.dat", d.words, 100)
 
 print('Done')
