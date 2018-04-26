@@ -25,8 +25,11 @@ def parse_args():
         parser.add_argument('--mb', type=int, default=5000,
                             help='Minibatch size. Default is 5000.')
 
-        parser.add_argument('--sig', type=int, default=10.0,
-                            help='Prior variance (regulariztion).')
+        parser.add_argument('--in_file', type=str, default=None,
+                            help='input file')
+
+        parser.add_argument('--emb_file', type=str, default=None,
+                            help='previously trained embeddings')
 
         args =  parser.parse_args()
         dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
