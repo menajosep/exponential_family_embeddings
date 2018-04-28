@@ -124,8 +124,9 @@ class bayesian_emb_model():
         self.K = K
         self.sess = sess
         self.logdir = logdir
-        with open(emb_file, 'rb') as f:
-            self.emb_model = pickle.load(f)
+        if emb_file is not None:
+            with open(emb_file, 'rb') as f:
+                self.emb_model = pickle.load(f)
 
         with tf.name_scope('model'):
             # Data Placeholder
@@ -172,11 +173,13 @@ class bayesian_emb_model():
         self.sigU = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
         self.locU = tf.get_variable("qU/loc", [d.L, self.K], initializer=tf.zeros_initializer())
-        self.locU.assign(self.emb_model['rho'])
+
         self.sigV = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
         self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
-        self.locV.assign(self.emb_model['alpha'])
+        if emb_file is not None:
+            self.locU.assign(self.emb_model['rho'])
+            self.locV.assign(self.emb_model['alpha'])
         self.qU = Normal(loc=self.locU, scale=self.sigU)
         self.qV = Normal(loc=self.locV, scale=self.sigV)
 
