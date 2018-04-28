@@ -87,17 +87,13 @@ class bern_emb_data():
 
 
 class bayessian_bern_emb_data():
-    def __init__(self, cs, ns, n_minibatch, L):
+    def __init__(self, input_file, cs, ns, n_minibatch, L):
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
         self.n_minibatch = n_minibatch
         self.L = L
-        # url = 'http://mattmahoney.net/dc/'
-        # filename = maybe_download(url, 'text8.zip', 31344016)
-        # filename = '/Users/jose.mena/Dropbox/Jose/PhD/data/recipes.txt.zip'
-        filename = '../data/wiki/wiki.txt.zip'
-        words = read_data(filename)
+        words = read_data(input_file)
         self.build_dataset(words)
         self.batch = self.batch_generator()
         self.N = len(self.data)

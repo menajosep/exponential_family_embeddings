@@ -16,7 +16,7 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bayessian_bern_emb_data(args.cs, args.ns, args.mb, args.L)
+d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L)
 
 # MODEL
 m = bayesian_emb_model(d, args.K, sess, dir_name)
