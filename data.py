@@ -87,23 +87,51 @@ class bern_emb_data():
 
 
 class bayessian_bern_emb_data():
-    def __init__(self, input_file, cs, ns, n_minibatch, L):
+    def __init__(self, input_file, cs, ns, n_minibatch, L, K, emb_file):
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
         self.n_minibatch = n_minibatch
         self.L = L
+        self.K = K
+        self.embeddings = None
+        self.embedding_matrix = None
         words = read_data(input_file)
+        if emb_file:
+            self.read_embeddings(emb_file)
         self.build_dataset(words)
         self.batch = self.batch_generator()
-        self.N = len(self.data)
+        self.N = len(self.word_target)
 
     def build_dataset(self, words):
         count = [['UNK', -1]]
         count.extend(collections.Counter(words).most_common(self.L - 1))
         dictionary = dict()
         for word, _ in count:
-            dictionary[word] = len(dictionary)
+            if self.embeddings:
+                if word == 'UNK' or word in self.embeddings:
+                    dictionary[word] = len(dictionary)
+                else:
+                    print word + " not in embeds"
+            else:
+                dictionary[word] = len(dictionary)
+        self.L = len(dictionary)
+        reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+        if self.embeddings:
+            self.K = len(self.embeddings.values()[0])
+            # build encoder embedding matrix
+            embedding_matrix = np.zeros((self.L, self.K))
+            not_found = 0
+            for word, index in dictionary.items():
+                embedding_vector = self.embeddings.get(word)
+                if embedding_vector is not None:
+                    # words not found in embedding index will be all-zeros.
+                    embedding_matrix[index] = embedding_vector
+                else:
+                    not_found += 1
+                    print('%s word out of the vocab.' % word)
+            self.embedding_matrix = embedding_matrix
+            del(self.embeddings)
         data = list()
         unk_count = 0
         for word in words:
@@ -114,8 +142,8 @@ class bayessian_bern_emb_data():
                 unk_count += 1
             data.append(index)
         count[0][1] = unk_count
-        reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
-        self.data = np.array(data)
+
+        data = np.array(data)
         self.count = count
         self.dictionary = dictionary
         self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
@@ -135,6 +163,18 @@ class bayessian_bern_emb_data():
         with open('fits/vocab.tsv', 'w') as txt:
             for word in self.words:
                 txt.write(word + '\n')
+
+    def read_embeddings(self, emb_file):
+        # load  embeddings
+        embeddings_index = {}
+        f = open(emb_file)
+        for line in f:
+            values = line.split()
+            word = values[0]
+            coefs = np.asarray(values[1:], dtype='float64')
+            embeddings_index[word] = coefs
+        f.close()
+        self.embeddings = embeddings_index
 
     def batch_generator(self):
         batch_size = self.n_minibatch

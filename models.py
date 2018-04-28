@@ -170,12 +170,16 @@ class bayesian_emb_model():
         # INFERENCE
         self.sigU = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
+        self.locU = tf.get_variable("qU/loc", [d.L, self.K], initializer=tf.zeros_initializer())
+        if d.embedding_matrix is not None:
+            self.locU.assign(d.embedding_matrix)
+            self.locU.trainable = False
         self.sigV = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
-        self.qU = Normal(loc=tf.get_variable("qU/loc", [d.L, self.K], initializer=tf.zeros_initializer()),
-                         scale=self.sigU)
-        self.qV = Normal(loc=tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer()),
-                         scale=self.sigV)
+        self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
+
+        self.qU = Normal(loc=self.locU, scale=self.sigU)
+        self.qV = Normal(loc=self.locV, scale=self.sigV)
 
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV},
                                  data={self.y_pos: self.ones_placeholder,
