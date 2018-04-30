@@ -50,6 +50,6 @@ for i in range(m.inference.n_iter):
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 print('training finished. Results are saved in ' + dir_name)
-m.dump(dir_name + "/variational.dat", d.words, 100)
+m.dump(dir_name + "/variational.dat", d)
 
 print('Done')

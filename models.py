@@ -170,15 +170,11 @@ class bayesian_emb_model():
         # INFERENCE
         self.sigU = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
-        self.locU = tf.get_variable("qU/loc", [d.L, self.K], initializer=tf.zeros_initializer())
-        if d.embedding_matrix is not None:
-            self.locU.assign(d.embedding_matrix)
-            self.locU.trainable = False
         self.sigV = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])))
         self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
 
-        self.qU = Normal(loc=self.locU, scale=self.sigU)
+        self.qU = Normal(loc=d.embedding_matrix, scale=self.sigU)
         self.qV = Normal(loc=self.locV, scale=self.sigV)
 
         self.inference = ed.KLqp({self.U: self.qU, self.V: self.qV},
@@ -200,13 +196,13 @@ class bayesian_emb_model():
         rho.metadata_path = '../vocab.tsv'
         projector.visualize_embeddings(self.train_writer, config)
 
-    def dump(self, fname, labels, n_samples):
+    def dump(self, fname, data):
         with self.sess.as_default():
-            dat = {'rhos': np.average(self.U.sample(n_samples).eval(), axis=0),
-                   'alpha': np.average(self.V.sample(n_samples).eval(), axis=0),
+            dat = {'rhos': data.embedding_matrix,
+                   'alpha': self.qV.loc.eval(),
                    'sigma_rhos': self.sigU.eval()[:, 0],
                    'sigma_alphas': self.sigV.eval()[:, 0],
-                   'words': self.build_words_list(labels, len(self.sigU.eval()))}
+                   'words': self.build_words_list(data.words, len(self.sigU.eval()))}
             pickle.dump(dat, open(fname, "a+"))
 
     def build_words_list(self, labels, list_length):

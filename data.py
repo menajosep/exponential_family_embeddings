@@ -120,7 +120,7 @@ class bayessian_bern_emb_data():
         if self.embeddings:
             self.K = len(self.embeddings.values()[0])
             # build encoder embedding matrix
-            embedding_matrix = np.zeros((self.L, self.K))
+            embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
             not_found = 0
             for word, index in dictionary.items():
                 embedding_vector = self.embeddings.get(word)
