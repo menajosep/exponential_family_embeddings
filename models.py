@@ -202,7 +202,8 @@ class bayesian_emb_model():
                    'alpha': self.qV.loc.eval(),
                    'sigma_rhos': self.sigU.eval()[:, 0],
                    'sigma_alphas': self.sigV.eval()[:, 0],
-                   'words': self.build_words_list(data.words, len(self.sigU.eval()))}
+                   'words': self.build_words_list(data.words, len(self.sigU.eval())),
+                   'counts': data.counter}
             pickle.dump(dat, open(fname, "a+"))
 
     def build_words_list(self, labels, list_length):

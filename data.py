@@ -2,6 +2,7 @@ import numpy as np
 from utils import *
 from keras.preprocessing import sequence
 from keras.preprocessing.sequence import skipgrams
+import collections
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -107,10 +108,12 @@ class bayessian_bern_emb_data():
         count = [['UNK', -1]]
         count.extend(collections.Counter(words).most_common(self.L - 1))
         dictionary = dict()
+        self.counter = dict()
         for word, _ in count:
             if self.embeddings:
                 if word == 'UNK' or word in self.embeddings:
                     dictionary[word] = len(dictionary)
+                    self.counter[word] = _
                 else:
                     print word + " not in embeds"
             else:
