@@ -4,7 +4,6 @@ import tensorflow as tf
 import zipfile
 
 from six.moves import urllib
-from random import shuffle
 
 
 def maybe_download(url, filename, expected_bytes):
@@ -25,14 +24,6 @@ def read_data(filename):
     """Extract the first file enclosed in a zip file as a list of words"""
     with zipfile.ZipFile(filename) as f:
         data = tf.compat.as_str(f.read(f.namelist()[0])).split()
-    return data
-
-
-def read_data_and_shuffle(filename):
-    """Extract the first file enclosed in a zip file as a list of words"""
-    with zipfile.ZipFile(filename) as f:
-        data = tf.compat.as_str(f.read(f.namelist()[0])).split()
-        data = shuffle(data)
     return data
 
 
