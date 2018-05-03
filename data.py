@@ -200,8 +200,12 @@ class bayessian_bern_emb_data():
             yield words_target, words_context, labels
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
-             ones_placeholder, zeros_placeholder):
+             ones_placeholder, zeros_placeholder, shuffling = False):
         chars_target, chars_context, labels = self.batch.next()
+        if shuffling:
+            np.random.shuffle(chars_target)
+            np.random.shuffle(chars_context)
+            np.random.shuffle(labels)
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
