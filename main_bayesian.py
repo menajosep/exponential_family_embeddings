@@ -6,6 +6,7 @@ import numpy as np
 import os
 import pickle
 import tensorflow as tf
+from tensorflow.python.training.adam import AdamOptimizer
 
 from data import *
 from models import *
@@ -32,9 +33,10 @@ def get_n_iters():
 # TRAINING
 n_iters, n_batches = get_n_iters()
 
-m.inference.initialize(n_samples=10, n_iter=n_iters, logdir=m.logdir,
+m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
-                       kl_scaling={m.y_pos: n_batches, m.y_neg: n_batches / args.ns}
+                       kl_scaling={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
+                       optimizer=AdamOptimizer(learning_rate=0.0001)
                        )
 init = tf.global_variables_initializer()
 sess.run(init)
