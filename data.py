@@ -204,8 +204,6 @@ class bayessian_bern_emb_data():
         chars_target, chars_context, labels = self.batch.next()
         if shuffling:
             np.random.shuffle(chars_target)
-            np.random.shuffle(chars_context)
-            np.random.shuffle(labels)
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
