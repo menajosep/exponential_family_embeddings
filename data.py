@@ -3,6 +3,7 @@ from utils import *
 from keras.preprocessing import sequence
 from keras.preprocessing.sequence import skipgrams
 import collections
+from gensim.models import KeyedVectors
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -111,7 +112,7 @@ class bayessian_bern_emb_data():
         self.counter = dict()
         for word, _ in count:
             if self.embeddings:
-                if word == 'UNK' or word in self.embeddings:
+                if word == 'UNK' or word in self.embeddings.vocab:
                     dictionary[word] = len(dictionary)
                     self.counter[word] = _
                 else:
@@ -121,12 +122,13 @@ class bayessian_bern_emb_data():
         self.L = len(dictionary)
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
         if self.embeddings:
-            self.K = len(self.embeddings.values()[0])
+            self.K = self.embeddings.vector_size
             # build encoder embedding matrix
             embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
             not_found = 0
             for word, index in dictionary.items():
-                embedding_vector = self.embeddings.get(word)
+                embedding_index = self.embeddings.vocab[word].index
+                embedding_vector = self.embeddings.vectors[embedding_index]
                 if embedding_vector is not None:
                     # words not found in embedding index will be all-zeros.
                     embedding_matrix[index] = embedding_vector
@@ -169,15 +171,7 @@ class bayessian_bern_emb_data():
 
     def read_embeddings(self, emb_file):
         # load  embeddings
-        embeddings_index = {}
-        f = open(emb_file)
-        for line in f:
-            values = line.split()
-            word = values[0]
-            coefs = np.asarray(values[1:], dtype='float64')
-            embeddings_index[word] = coefs
-        f.close()
-        self.embeddings = embeddings_index
+        self.embeddings = KeyedVectors.load_word2vec_format(emb_file, binary=True)
 
     def batch_generator(self):
         batch_size = self.n_minibatch
