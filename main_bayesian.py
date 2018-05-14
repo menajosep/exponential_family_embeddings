@@ -45,8 +45,8 @@ for i in range(m.inference.n_iter):
                                                     m.context_placeholder,
                                                     m.labels_placeholder,
                                                     m.ones_placeholder,
-                                                    m.zeros_placeholder
-                                                    ))
+                                                    m.zeros_placeholder,
+                                                    True))
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
