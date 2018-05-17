@@ -31,8 +31,17 @@ def parse_args():
         parser.add_argument('--in_file', type=str, default=None,
                             help='input file')
 
-        parser.add_argument('--emb_file', type=str, default=None,
-                            help='previously trained embeddings')
+        parser.add_argument('--emb_type', type=str, default=None,
+                            help='type of previously trained embeddings')
+
+        parser.add_argument('--word2vec_file', type=str, default=None,
+                            help='word2vec previously trained embeddings')
+
+        parser.add_argument('--glove_file', type=str, default=None,
+                            help='glove previously trained embeddings')
+
+        parser.add_argument('--fasttext_file', type=str, default=None,
+                            help='fasttext previously trained embeddings')
 
         args =  parser.parse_args()
         dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")

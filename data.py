@@ -3,6 +3,7 @@ from utils import *
 from keras.preprocessing import sequence
 from keras.preprocessing.sequence import skipgrams
 import collections
+from gensim.models import KeyedVectors
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -88,7 +89,8 @@ class bern_emb_data():
 
 
 class bayessian_bern_emb_data():
-    def __init__(self, input_file, cs, ns, n_minibatch, L, K, emb_file, dir_name):
+    def __init__(self, input_file, cs, ns, n_minibatch, L, K,
+                 emb_type, word2vec_file, glove_file, fasttext_file, dir_name):
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
@@ -96,11 +98,16 @@ class bayessian_bern_emb_data():
         self.L = L
         self.K = K
         self.dir_name = dir_name
-        self.embeddings = None
+        self.word2vec_embedings = None
+        self.glove_embedings = None
+        self.fasttext_embedings = None
+        self.emb_type = emb_type
         self.embedding_matrix = None
         words = read_data(input_file)
-        if emb_file:
-            self.read_embeddings(emb_file)
+        if emb_type:
+            self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = self.read_embeddings(glove_file)
+            self.fasttext_embedings = self.read_embeddings(fasttext_file)
         self.build_dataset(words)
         self.batch = self.batch_generator()
         self.N = len(self.word_target)
@@ -109,11 +116,13 @@ class bayessian_bern_emb_data():
     def build_dataset(self, words):
         count = [['UNK', -1]]
         count.extend(collections.Counter(words).most_common(self.L - 1))
+        print "original count " + str(len(count))
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
-            if self.embeddings:
-                if word == 'UNK' or word in self.embeddings:
+            if self.emb_type:
+                if word == 'UNK' or (word in self.word2vec_embedings.vocab\
+                        and word in self.glove_embedings and word in self.fasttext_embedings):
                     dictionary[word] = len(dictionary)
                     self.counter[word] = _
                 else:
@@ -121,22 +130,46 @@ class bayessian_bern_emb_data():
             else:
                 dictionary[word] = len(dictionary)
         self.L = len(dictionary)
+        print "dictionary size" + str(len(dictionary))
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
-        if self.embeddings:
-            self.K = len(self.embeddings.values()[0])
-            # build encoder embedding matrix
-            embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
-            not_found = 0
-            for word, index in dictionary.items():
-                embedding_vector = self.embeddings.get(word)
-                if embedding_vector is not None:
-                    # words not found in embedding index will be all-zeros.
-                    embedding_matrix[index] = embedding_vector
+        if self.emb_type:
+            if self.emb_type == 'word2vec':
+                self.K = self.word2vec_embedings.vector_size
+                # build encoder embedding matrix
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in dictionary.items():
+                    embedding_index = self.word2vec_embedings.vocab[word].index
+                    embedding_vector = self.word2vec_embedings.vectors[embedding_index]
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        print('%s word out of the vocab.' % word)
+                self.embedding_matrix = embedding_matrix
+            else:
+                if self.emb_type == 'glove':
+                    embeddings = self.glove_embedings
                 else:
-                    not_found += 1
-                    print('%s word out of the vocab.' % word)
-            self.embedding_matrix = embedding_matrix
-            del(self.embeddings)
+                    embeddings = self.fasttext_embedings
+                self.K = len(embeddings.values()[0])
+                # build encoder embedding matrix
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in dictionary.items():
+                    embedding_vector = embeddings.get(word)
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        print('%s word out of the vocab.' % word)
+                del(embeddings)
+                self.embedding_matrix = embedding_matrix
+            del(self.word2vec_embedings)
+            del(self.glove_embedings)
+            del(self.fasttext_embedings)
         data = list()
         unk_count = 0
         for word in words:
@@ -179,7 +212,11 @@ class bayessian_bern_emb_data():
             coefs = np.asarray(values[1:], dtype='float64')
             embeddings_index[word] = coefs
         f.close()
-        self.embeddings = embeddings_index
+        return embeddings_index
+
+    def read_word2vec_embeddings(self, emb_file):
+        # load  embeddings
+        return KeyedVectors.load_word2vec_format(emb_file, binary=True)
 
     def batch_generator(self):
         batch_size = self.n_minibatch
