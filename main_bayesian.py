@@ -17,7 +17,7 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K, args.emb_file)
+d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K, args.emb_file, dir_name)
 
 # MODEL
 m = bayesian_emb_model(d, d.K, sess, dir_name)
@@ -45,8 +45,8 @@ for i in range(m.inference.n_iter):
                                                     m.context_placeholder,
                                                     m.labels_placeholder,
                                                     m.ones_placeholder,
-                                                    m.zeros_placeholder
-                                                    ))
+                                                    m.zeros_placeholder,
+                                                    True))
     m.inference.print_progress(info_dict)
     if i % n_batches == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)

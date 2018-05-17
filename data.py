@@ -89,13 +89,14 @@ class bern_emb_data():
 
 
 class bayessian_bern_emb_data():
-    def __init__(self, input_file, cs, ns, n_minibatch, L, K, emb_file):
+    def __init__(self, input_file, cs, ns, n_minibatch, L, K, emb_file, dir_name):
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
         self.n_minibatch = n_minibatch
         self.L = L
         self.K = K
+        self.dir_name = dir_name
         self.embeddings = None
         self.embedding_matrix = None
         words = read_data(input_file)
@@ -104,6 +105,7 @@ class bayessian_bern_emb_data():
         self.build_dataset(words)
         self.batch = self.batch_generator()
         self.N = len(self.word_target)
+
 
     def build_dataset(self, words):
         count = [['UNK', -1]]
@@ -165,7 +167,7 @@ class bayessian_bern_emb_data():
         del couples
         self.word_target = np.array(word_target, dtype="int32")
         self.word_context = np.array(word_context, dtype="int32")
-        with open('fits/vocab.tsv', 'w') as txt:
+        with open(self.dir_name+'/vocab.tsv', 'w') as txt:
             for word in self.words:
                 txt.write(word + '\n')
 
@@ -197,7 +199,7 @@ class bayessian_bern_emb_data():
              ones_placeholder, zeros_placeholder, shuffling = False):
         chars_target, chars_context, labels = self.batch.next()
         if shuffling:
-            np.random.shuffle(chars_target)
+            labels = np.random.permutation(labels)
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
