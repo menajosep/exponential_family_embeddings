@@ -90,7 +90,8 @@ class bern_emb_data():
 
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
-                 emb_type, word2vec_file, glove_file, fasttext_file, dir_name):
+                 emb_type, word2vec_file, glove_file,
+                 fasttext_file, custom_file, dir_name):
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
@@ -101,6 +102,7 @@ class bayessian_bern_emb_data():
         self.word2vec_embedings = None
         self.glove_embedings = None
         self.fasttext_embedings = None
+        self.custom_embedings = None
         self.emb_type = emb_type
         self.embedding_matrix = None
         words = read_data(input_file)
@@ -108,6 +110,8 @@ class bayessian_bern_emb_data():
             self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
             self.glove_embedings = self.read_embeddings(glove_file)
             self.fasttext_embedings = self.read_embeddings(fasttext_file)
+            if custom_file:
+                self.custom_embedings = self.read_embeddings(custom_file)
         self.build_dataset(words)
         self.batch = self.batch_generator()
         self.N = len(self.word_target)
@@ -151,8 +155,10 @@ class bayessian_bern_emb_data():
             else:
                 if self.emb_type == 'glove':
                     embeddings = self.glove_embedings
-                else:
+                elif self.emb_type == 'fasttext':
                     embeddings = self.fasttext_embedings
+                else:
+                    embeddings = self.custom_embedings
                 self.K = len(embeddings.values()[0])
                 # build encoder embedding matrix
                 embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
@@ -170,6 +176,7 @@ class bayessian_bern_emb_data():
             del(self.word2vec_embedings)
             del(self.glove_embedings)
             del(self.fasttext_embedings)
+            del(self.custom_embedings)
         data = list()
         unk_count = 0
         for word in words:
