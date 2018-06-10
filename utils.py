@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import tensorflow as tf
 import zipfile
+import numpy as np
 
 from six.moves import urllib
 
@@ -25,6 +26,24 @@ def read_data(filename):
     with zipfile.ZipFile(filename) as f:
         data = tf.compat.as_str(f.read(f.namelist()[0])).split()
     return data
+
+
+def get_optimal():
+    x = np.linspace(0, 1, 100)
+    a = 1
+    for b in range(7, 17, 2):
+        optimal = np.power(x, a) * np.power((1 - x), b) + 1e-3
+        optimal = optimal / np.sum(optimal)
+    return optimal
+
+
+def is_goog_embedding(sigmas):
+    threshold = 0.5
+    optimal = get_optimal()
+    hist = plt.hist(sigmas, bins=100, color='green', label='sigma values')
+    distr = (hist[0] + 1e-5) / np.sum(hist[0])
+    distance = -np.sum(optimal * np.log(distr / optimal))
+    return distance < threshold
 
 
 def plot_with_labels(low_dim_embs, labels, fname):
