@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow.python.training.adam import AdamOptimizer
+import matplotlib
+matplotlib.use('Agg')
 
 from args import *
 from data import *
@@ -54,7 +56,7 @@ for i in range(m.inference.n_iter):
         sigmas = m.sigU.eval()[:, 0]
         sigmas_list.append(sigmas)
         pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "w+"))
-        if is_goog_embedding(sigmas):
+        if is_good_embedding(sigmas):
             break
 
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)

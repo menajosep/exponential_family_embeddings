@@ -37,7 +37,7 @@ def get_optimal():
     return optimal
 
 
-def is_goog_embedding(sigmas):
+def is_good_embedding(sigmas):
     plt.use('Agg')
     threshold = 0.5
     optimal = get_optimal()
