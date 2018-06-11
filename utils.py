@@ -38,7 +38,6 @@ def get_optimal():
 
 
 def is_good_embedding(sigmas):
-    plt.use('Agg')
     threshold = 0.5
     optimal = get_optimal()
     hist = plt.hist(sigmas, bins=100, color='green', label='sigma values')
