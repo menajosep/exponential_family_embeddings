@@ -31,18 +31,23 @@ def read_data(filename):
 def get_optimal():
     x = np.linspace(0, 1, 100)
     a = 1
+    optimals = []
     for b in range(7, 17, 2):
         optimal = np.power(x, a) * np.power((1 - x), b) + 1e-3
         optimal = optimal / np.sum(optimal)
-    return optimal
+        optimals.append(optimal)
+    return optimals
 
 
-def is_good_embedding(sigmas):
-    threshold = 0.5
-    optimal = get_optimal()
+def is_goog_embedding(sigmas):
+    threshold = 1e-3
+    optimals = get_optimal()
     hist = plt.hist(sigmas, bins=100, color='green', label='sigma values')
     distr = (hist[0] + 1e-5) / np.sum(hist[0])
-    distance = -np.sum(optimal * np.log(distr / optimal))
+    distance = 0
+    for optimal in optimals:
+        distance += -np.sum(optimal * np.log(distr / optimal))
+    distance = distance / len(optimals)
     return distance < threshold
 
 
