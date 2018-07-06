@@ -3,8 +3,14 @@ import os
 import tensorflow as tf
 import zipfile
 import numpy as np
+from itertools import chain
 
 from six.moves import urllib
+from pathos.multiprocessing import Pool, cpu_count
+from more_itertools import chunked
+from typing import List, Callable, Union, Any
+import random
+from math import ceil
 
 
 def maybe_download(url, filename, expected_bytes):
@@ -22,10 +28,72 @@ def maybe_download(url, filename, expected_bytes):
 
 
 def read_data(filename):
-    """Extract the first file enclosed in a zip file as a list of words"""
-    with zipfile.ZipFile(filename) as f:
-        data = tf.compat.as_str(f.read(f.namelist()[0])).split()
+    """Extract the first file enclosed in a zip file as a list of sentences"""
+    data = list()
+    with zipfile.ZipFile(filename) as z:
+        with z.open(z.namelist()[0]) as f:
+            for line in f:
+                data.append(tf.compat.as_str(line))
     return data
+
+
+def flatten_list(listoflists):
+    return list(chain.from_iterable(listoflists))
+
+
+def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int, sampling_table:dict):
+    """Generate a function that will clean and tokenize text."""
+    def process_sentences(sentences):
+        samples = []
+        dictionary_keys = list(dictionary.keys())
+        try:
+            for sentence in sentences:
+                words = sentence.split()
+                if len(words) > context_size:
+                    index = 0
+                    for word in words[int(context_size/2):len(words)-int(context_size/2)]:
+                        if word in dictionary_keys and word != 'UNK' and sampling_table[word] < random.random() :
+                            target_word_index = dictionary[word]
+                            local_context_words_indexes = [i for i in range(index, index + context_size + 1)]
+                            local_context_words_indexes.remove(index+int(context_size/2))
+                            index += 1
+                            for local_index in local_context_words_indexes:
+                                context_word = words[local_index]
+                                #prepare positive samples
+                                if context_word in dictionary_keys:
+                                    context_word_index = dictionary[context_word]
+                                else:
+                                    context_word_index = dictionary['UNK']
+                                samples.append((target_word_index, context_word_index, 1))
+                                for i in range(neg_samples):
+                                    random_neg_sample = random.randint(0, len(dictionary) - 1)
+                                    samples.append((target_word_index, random_neg_sample, 0))
+        except Exception as e:
+            print('error '+e)
+        return samples
+
+    return process_sentences
+
+
+def apply_parallel(func: Callable,
+                   data: List[Any],
+                   cpu_cores: int = None) -> List[Any]:
+    """
+    Apply function to list of elements.
+
+    Automatically determines the chunk size.
+    """
+    if not cpu_cores:
+        cpu_cores = cpu_count()
+
+    try:
+        chunk_size = ceil(len(data) / cpu_cores)
+        pool = Pool(cpu_cores)
+        transformed_data = pool.map(func, chunked(data, chunk_size), chunksize=1)
+    finally:
+        pool.close()
+        pool.join()
+        return transformed_data
 
 
 def get_optimal():

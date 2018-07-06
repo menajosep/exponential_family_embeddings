@@ -1,9 +1,9 @@
-import numpy as np
 from utils import *
 from keras.preprocessing import sequence
 from keras.preprocessing.sequence import skipgrams
 import collections
 from gensim.models import KeyedVectors
+from math import sqrt
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -105,22 +105,22 @@ class bayessian_bern_emb_data():
         self.custom_embedings = None
         self.emb_type = emb_type
         self.embedding_matrix = None
-        words = read_data(input_file)
+        sentences = read_data(input_file)
         if emb_type:
             self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
             self.glove_embedings = self.read_embeddings(glove_file)
             self.fasttext_embedings = self.read_embeddings(fasttext_file)
             if custom_file:
                 self.custom_embedings = self.read_embeddings(custom_file)
-        self.build_dataset(words)
+        self.build_dataset(sentences)
         self.batch = self.batch_generator()
         self.N = len(self.word_target)
 
 
-    def build_dataset(self, words):
+    def build_dataset(self, sentences):
         count = [['UNK', -1]]
-        count.extend(collections.Counter(words).most_common(self.L - 1))
-        print "original count " + str(len(count))
+        count.extend(collections.Counter(''.join(sentences).split()).most_common(self.L - 1))
+        print("original count " + str(len(count)))
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
@@ -130,11 +130,11 @@ class bayessian_bern_emb_data():
                     dictionary[word] = len(dictionary)
                     self.counter[word] = _
                 else:
-                    print word + " not in embeds"
+                    print (word + " not in embeds")
             else:
                 dictionary[word] = len(dictionary)
         self.L = len(dictionary)
-        print "dictionary size" + str(len(dictionary))
+        print("dictionary size" + str(len(dictionary)))
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
         if self.emb_type:
             if self.emb_type == 'word2vec':
@@ -159,8 +159,8 @@ class bayessian_bern_emb_data():
                     embeddings = self.fasttext_embedings
                 else:
                     embeddings = self.custom_embedings
-                self.K = len(embeddings.values()[0])
-                # build encoder embedding matrix
+                self.K = len(list(embeddings.values())[0])
+                print("build encoder embedding matrix")
                 embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
                 not_found = 0
                 for word, index in dictionary.items():
@@ -177,34 +177,16 @@ class bayessian_bern_emb_data():
             del(self.glove_embedings)
             del(self.fasttext_embedings)
             del(self.custom_embedings)
-        data = list()
-        unk_count = 0
-        for word in words:
-            if word in dictionary:
-                index = dictionary[word]
-            else:
-                index = 0
-                unk_count += 1
-            data.append(index)
-        count[0][1] = unk_count
 
-        data = np.array(data)
-        self.count = count
+        self.build_sampling_table(self.counter)
         self.dictionary = dictionary
         self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
-        sampling_table = sequence.make_sampling_table(len(dictionary))
-        couples, labels = skipgrams(data,
-                                    len(dictionary),
-                                    window_size=self.cs,
-                                    sampling_table=sampling_table,
-                                    negative_samples=self.ns)
-        del data
+        samples = self.parallel_process_text(sentences)
+        target_words, context_words, labels = zip(*samples)
         self.labels = np.array(labels)
-        # labels[labels == 0] = -1
-        word_target, word_context = zip(*couples)
-        del couples
-        self.word_target = np.array(word_target, dtype="int32")
-        self.word_context = np.array(word_context, dtype="int32")
+        del samples
+        self.word_target = np.array(target_words, dtype="int32")
+        self.word_context = np.array(context_words, dtype="int32")
         with open(self.dir_name+'/vocab.tsv', 'w') as txt:
             for word in self.words:
                 txt.write(word + '\n')
@@ -213,17 +195,31 @@ class bayessian_bern_emb_data():
         # load  embeddings
         embeddings_index = {}
         f = open(emb_file)
+        embeddings_size = 0
         for line in f:
-            values = line.split()
-            word = values[0]
-            coefs = np.asarray(values[1:], dtype='float64')
-            embeddings_index[word] = coefs
+            try:
+                values = line.split()
+                if embeddings_size == 0:
+                    embeddings_size = len(values)
+                else:
+                    if embeddings_size == len(values):
+                        word = values[0]
+                        coefs = np.asarray(values[1:], dtype='float64')
+                        embeddings_index[word] = coefs
+            except ValueError as ve:
+                print('error')
+
         f.close()
         return embeddings_index
 
     def read_word2vec_embeddings(self, emb_file):
         # load  embeddings
         return KeyedVectors.load_word2vec_format(emb_file, binary=True)
+
+    def parallel_process_text(self, data: List[str]) -> List[List[str]]:
+        """Apply cleaner -> tokenizer."""
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.sampling_table)
+        return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self):
         batch_size = self.n_minibatch
@@ -256,3 +252,14 @@ class bayessian_bern_emb_data():
                 ones_placeholder: np.ones((self.n_minibatch), dtype=np.int32),
                 zeros_placeholder: np.zeros((self.n_minibatch), dtype=np.int32)
                 }
+
+    def build_sampling_table(self, count_words):
+        sampling_factor = 1e-3
+        sampling_table = dict()
+        total_occurrences = sum(count_words.values())
+        for word in count_words:
+            if word != 'UNK':
+                word_frequency = (1. * count_words[word]) / total_occurrences
+                sampling_table[word] = max(0., ((word_frequency - sampling_factor) / word_frequency) - sqrt(
+                    sampling_factor / word_frequency))
+        self.sampling_table = sampling_table
