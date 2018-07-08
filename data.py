@@ -159,7 +159,7 @@ class bayessian_bern_emb_data():
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
              ones_placeholder, zeros_placeholder, shuffling = False):
-        chars_target, chars_context, labels = self.batch.next()
+        chars_target, chars_context, labels = self.batch.__next__()
         if shuffling:
             labels = np.random.permutation(labels)
         return {target_placeholder: chars_target,
