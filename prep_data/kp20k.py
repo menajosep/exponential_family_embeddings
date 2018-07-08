@@ -36,14 +36,10 @@ def get_text(field_name):
 
 
 with open(filename) as f:
-    counter = 0
     for line in tqdm(f, total=get_num_lines(filename)):
         json_line = json.loads(line)
         data.append(get_text('abstract'))
         data.append(get_text('title'))
-        counter += 1
-        if counter == 10000:
-            break
 dest_filename = '/Users/jose.mena/dev/personal/data/kp20k/kp20k_1line_10k.txt'
 with open(dest_filename, 'w') as f:
     for text in data:
