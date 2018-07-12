@@ -34,7 +34,7 @@ def read_data(filename):
         with z.open(z.namelist()[0]) as f:
             for line in f:
                 data.append(tf.compat.as_str(line))
-    return data
+    return data[:1000]
 
 
 def flatten_list(listoflists):
@@ -107,7 +107,7 @@ def get_optimal():
     return optimals
 
 
-def is_goog_embedding(sigmas):
+def is_good_embedding(sigmas):
     threshold = 1e-3
     optimals = get_optimal()
     hist = plt.hist(sigmas, bins=100, color='green', label='sigma values')

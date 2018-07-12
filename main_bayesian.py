@@ -55,7 +55,7 @@ for i in range(m.inference.n_iter):
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
         sigmas = m.sigU.eval()[:, 0]
         sigmas_list.append(sigmas)
-        pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "w+"))
+        pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "wb+"))
         if is_good_embedding(sigmas):
             break
 

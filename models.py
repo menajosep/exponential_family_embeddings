@@ -96,7 +96,7 @@ class bayesian_emb_model():
                    'sigma_alphas': self.sigV.eval()[:, 0],
                    'words': self.build_words_list(data.words, len(self.sigU.eval())),
                    'counts': data.counter}
-            pickle.dump(dat, open(fname, "a+"))
+            pickle.dump(dat, open(fname, "ab+"))
 
     def build_words_list(self, labels, list_length):
         if len(labels) < list_length:
