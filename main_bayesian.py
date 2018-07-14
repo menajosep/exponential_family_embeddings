@@ -34,10 +34,12 @@ sigmas_list = list()
 
 # TRAINING
 n_iters, n_batches = get_n_iters()
+kl_scaling_weights = np.divide(np.power(2, np.subtract(n_batches, np.arange(n_batches, dtype=np.float64))),
+                               (2 ** n_batches) - 1)
 
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
-                       kl_scaling={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
+                       kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
                        optimizer=AdamOptimizer(learning_rate=0.01)
                        )
 init = tf.global_variables_initializer()
