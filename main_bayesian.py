@@ -18,6 +18,15 @@ def get_n_iters():
     return int(n_batches) * args.n_epochs, int(n_batches)
 
 
+def get_kl_weights(n_batches):
+    weights = np.full(n_batches, 1./((2 ** 1000) - 1), dtype=np.float64)
+    weights_lim = min(n_batches, 1000)
+    for i in range(weights_lim):
+        weight = (2 ** (weights_lim - i)) / ((2 ** n_batches) - 1)
+        weights[i] = weight
+    return weights
+
+
 args, dir_name = parse_args()
 os.makedirs(dir_name)
 sess = ed.get_session()
@@ -34,8 +43,7 @@ sigmas_list = list()
 
 # TRAINING
 n_iters, n_batches = get_n_iters()
-kl_scaling_weights = np.divide(np.power(2, np.subtract(n_batches, np.arange(n_batches, dtype=np.float64))),
-                               (2 ** n_batches) - 1)
+kl_scaling_weights = get_kl_weights(n_batches)
 
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
