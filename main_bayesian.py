@@ -51,7 +51,7 @@ kl_scaling_weights = get_kl_weights(n_batches)
 logger.debug('init training number of iters '+str(n_iters)+' and batches '+str(n_batches))
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
-                       kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
+                       #kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
                        optimizer=AdamOptimizer(learning_rate=0.01)
                        )
 init = tf.global_variables_initializer()
