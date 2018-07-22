@@ -183,7 +183,7 @@ class bayessian_bern_emb_data():
                 }
 
     def build_sampling_table(self, count_words):
-        sampling_factor = 1e-5
+        sampling_factor = 5e-5
         sampling_table = dict()
         total_occurrences = sum(count_words.values())
         for word in count_words:
