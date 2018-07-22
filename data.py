@@ -2,6 +2,7 @@ from utils import *
 import collections
 from gensim.models import KeyedVectors
 from math import sqrt
+from random import shuffle
 import pickle
 
 
@@ -108,6 +109,7 @@ class bayessian_bern_emb_data():
         self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
         self.logger.debug('....start parallele processing')
         samples = self.parallel_process_text(sentences)
+        shuffle(samples)
         self.logger.debug('....finish parallel processing')
         target_words, context_words, labels = zip(*samples)
         self.labels = np.array(labels)
