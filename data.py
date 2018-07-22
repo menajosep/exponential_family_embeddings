@@ -2,13 +2,20 @@ from utils import *
 import collections
 from gensim.models import KeyedVectors
 from math import sqrt
+import pickle
 
 
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
                  emb_type, word2vec_file, glove_file,
-                 fasttext_file, custom_file, dir_name):
+                 fasttext_file, custom_file, dir_name, logger):
         assert cs % 2 == 0
+        self.logger = logger
+        self.logger.debug('initializing bayessian_bern_emb_data with file ' + input_file)
+        self.logger.debug('neg sampling ' + str(ns))
+        self.logger.debug('context size of ' + str(cs))
+        self.logger.debug('dimesion of embeddings ' + str(K))
+        self.logger.debug('working dir ' + dir_name)
         self.cs = cs
         self.ns = ns
         self.n_minibatch = n_minibatch
@@ -21,22 +28,24 @@ class bayessian_bern_emb_data():
         self.custom_embedings = None
         self.emb_type = emb_type
         self.embedding_matrix = None
+        self.logger.debug('....reading data')
         sentences = read_data(input_file)
+        self.logger.debug('....loading embeddings file')
         if emb_type:
             self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
             self.glove_embedings = self.read_embeddings(glove_file)
             self.fasttext_embedings = self.read_embeddings(fasttext_file)
             if custom_file:
                 self.custom_embedings = self.read_embeddings(custom_file)
+        self.logger.debug('....building corpus')
         self.build_dataset(sentences)
-        self.batch = self.batch_generator()
         self.N = len(self.word_target)
 
 
     def build_dataset(self, sentences):
         count = [['UNK', -1]]
         count.extend(collections.Counter(''.join(sentences).split()).most_common(self.L - 1))
-        print("original count " + str(len(count)))
+        self.logger.debug("original count " + str(len(count)))
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
@@ -50,7 +59,7 @@ class bayessian_bern_emb_data():
             else:
                 dictionary[word] = len(dictionary)
         self.L = len(dictionary)
-        print("dictionary size" + str(len(dictionary)))
+        self.logger.debug("dictionary size" + str(len(dictionary)))
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
         if self.emb_type:
             if self.emb_type == 'word2vec':
@@ -66,7 +75,7 @@ class bayessian_bern_emb_data():
                         embedding_matrix[index] = embedding_vector
                     else:
                         not_found += 1
-                        print('%s word out of the vocab.' % word)
+                        self.logger.debug('%s word out of the vocab.' % word)
                 self.embedding_matrix = embedding_matrix
             else:
                 if self.emb_type == 'glove':
@@ -76,7 +85,7 @@ class bayessian_bern_emb_data():
                 else:
                     embeddings = self.custom_embedings
                 self.K = len(list(embeddings.values())[0])
-                print("build encoder embedding matrix")
+                self.logger.debug("build encoder embedding matrix")
                 embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
                 not_found = 0
                 for word, index in dictionary.items():
@@ -86,7 +95,7 @@ class bayessian_bern_emb_data():
                         embedding_matrix[index] = embedding_vector
                     else:
                         not_found += 1
-                        print('%s word out of the vocab.' % word)
+                        self.logger.debug('%s word out of the vocab.' % word)
                 del(embeddings)
                 self.embedding_matrix = embedding_matrix
             del(self.word2vec_embedings)
@@ -94,18 +103,24 @@ class bayessian_bern_emb_data():
             del(self.fasttext_embedings)
             del(self.custom_embedings)
 
+        self.logger.debug('....Build sampling table')
         self.build_sampling_table(self.counter)
         self.dictionary = dictionary
         self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
+        self.logger.debug('....start parallele processing')
         samples = self.parallel_process_text(sentences)
+        self.logger.debug('....finish parallel processing')
         target_words, context_words, labels = zip(*samples)
         self.labels = np.array(labels)
         del samples
         self.word_target = np.array(target_words, dtype="int32")
         self.word_context = np.array(context_words, dtype="int32")
+        self.logger.debug('....corpus generated')
+        self.logger.debug('....store vocab')
         with open(self.dir_name+'/vocab.tsv', 'w') as txt:
             for word in self.words:
                 txt.write(word + '\n')
+        self.logger.debug('....vocab stored')
 
     def read_embeddings(self, emb_file):
         # load  embeddings
@@ -137,8 +152,7 @@ class bayessian_bern_emb_data():
         process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.sampling_table)
         return flatten_list(apply_parallel(process_text, data))
 
-    def batch_generator(self):
-        batch_size = self.n_minibatch
+    def batch_generator(self, batch_size):
         data_target = self.word_target
         data_context = self.word_context
         data_labels = self.labels
@@ -158,15 +172,13 @@ class bayessian_bern_emb_data():
             yield words_target, words_context, labels
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
-             ones_placeholder, zeros_placeholder, shuffling = False):
+             ones_placeholder, zeros_placeholder, n_minibatch):
         chars_target, chars_context, labels = self.batch.__next__()
-        if shuffling:
-            labels = np.random.permutation(labels)
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
-                ones_placeholder: np.ones((self.n_minibatch), dtype=np.int32),
-                zeros_placeholder: np.zeros((self.n_minibatch), dtype=np.int32)
+                ones_placeholder: np.ones(n_minibatch, dtype=np.int32),
+                zeros_placeholder: np.zeros(n_minibatch, dtype=np.int32)
                 }
 
     def build_sampling_table(self, count_words):
@@ -179,3 +191,12 @@ class bayessian_bern_emb_data():
                 sampling_table[word] = max(0., ((word_frequency - sampling_factor) / word_frequency) - sqrt(
                     sampling_factor / word_frequency))
         self.sampling_table = sampling_table
+
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['logger']
+        return state
