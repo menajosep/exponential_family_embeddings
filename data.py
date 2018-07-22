@@ -14,7 +14,6 @@ class bayessian_bern_emb_data():
         self.logger.debug('initializing bayessian_bern_emb_data with file ' + input_file)
         self.logger.debug('neg sampling ' + str(ns))
         self.logger.debug('context size of ' + str(cs))
-        self.logger.debug('dimesion of embeddings ' + str(K))
         self.logger.debug('working dir ' + dir_name)
         self.cs = cs
         self.ns = ns
@@ -182,7 +181,7 @@ class bayessian_bern_emb_data():
                 }
 
     def build_sampling_table(self, count_words):
-        sampling_factor = 1e-3
+        sampling_factor = 1e-5
         sampling_table = dict()
         total_occurrences = sum(count_words.values())
         for word in count_words:
