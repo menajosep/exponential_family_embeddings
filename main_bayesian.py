@@ -17,6 +17,7 @@ def get_n_iters():
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
 
+logger = get_logger()
 
 args, dir_name = parse_args()
 os.makedirs(dir_name)
@@ -25,16 +26,19 @@ sess = ed.get_session()
 # DATA
 d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
                             args.emb_type, args.word2vec_file, args.glove_file,
-                            args.fasttext_file, args.custom_file, dir_name)
+                            args.fasttext_file, args.custom_file, dir_name, logger)
+pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 
 # MODEL
+d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+d.batch = d.batch_generator(args.mb)
 m = bayesian_emb_model(d, d.K, sess, dir_name)
 sigmas_list = list()
 
 
 # TRAINING
 n_iters, n_batches = get_n_iters()
-
+logger.debug('init training number of iters '+str(n_iters)+' and batches '+str(n_batches))
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
                        kl_scaling={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
@@ -42,14 +46,14 @@ m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        )
 init = tf.global_variables_initializer()
 sess.run(init)
-
+logger.debug('....starting training')
 for i in range(m.inference.n_iter):
     info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
                                                     m.context_placeholder,
                                                     m.labels_placeholder,
                                                     m.ones_placeholder,
                                                     m.zeros_placeholder,
-                                                    True))
+                                                    args.mb))
     m.inference.print_progress(info_dict)
     if i % 10000 == 0:
         m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
@@ -60,7 +64,7 @@ for i in range(m.inference.n_iter):
             break
 
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
-print('training finished. Results are saved in ' + dir_name)
+logger.debug('training finished. Results are saved in ' + dir_name)
 m.dump(dir_name + "/variational.dat", d)
 
-print('Done')
+logger.debug('Done')

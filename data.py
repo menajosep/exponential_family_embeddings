@@ -91,7 +91,12 @@ class bern_emb_data():
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
                  emb_type, word2vec_file, glove_file,
-                 fasttext_file, custom_file, dir_name):
+                 fasttext_file, custom_file, dir_name, logger):
+        self.logger = logger
+        self.logger.debug('initializing bayessian_bern_emb_data with file '+input_file)
+        self.logger.debug('neg sampling '+str(ns))
+        self.logger.debug('context size of '+str(cs))
+        self.logger.debug('working dir '+dir_name)
         assert cs % 2 == 0
         self.cs = cs
         self.ns = ns
@@ -105,22 +110,24 @@ class bayessian_bern_emb_data():
         self.custom_embedings = None
         self.emb_type = emb_type
         self.embedding_matrix = None
+        self.logger.debug('....reading data')
         words = read_data(input_file)
+        self.logger.debug('....loading embeddings file')
         if emb_type:
             self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
             self.glove_embedings = self.read_embeddings(glove_file)
             self.fasttext_embedings = self.read_embeddings(fasttext_file)
             if custom_file:
                 self.custom_embedings = self.read_embeddings(custom_file)
+        self.logger.debug('....building corpus')
         self.build_dataset(words)
-        self.batch = self.batch_generator()
         self.N = len(self.word_target)
 
 
     def build_dataset(self, words):
         count = [['UNK', -1]]
         count.extend(collections.Counter(words).most_common(self.L - 1))
-        print "original count " + str(len(count))
+        self.logger.debug("original count " + str(len(count)))
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
@@ -130,11 +137,11 @@ class bayessian_bern_emb_data():
                     dictionary[word] = len(dictionary)
                     self.counter[word] = _
                 else:
-                    print word + " not in embeds"
+                    self.logger.debug(word + " not in embeds")
             else:
                 dictionary[word] = len(dictionary)
         self.L = len(dictionary)
-        print "dictionary size" + str(len(dictionary))
+        self.logger.debug("dictionary size" + str(len(dictionary)))
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
         if self.emb_type:
             if self.emb_type == 'word2vec':
@@ -150,7 +157,7 @@ class bayessian_bern_emb_data():
                         embedding_matrix[index] = embedding_vector
                     else:
                         not_found += 1
-                        print('%s word out of the vocab.' % word)
+                        self.logger.debug('%s word out of the vocab.' % word)
                 self.embedding_matrix = embedding_matrix
             else:
                 if self.emb_type == 'glove':
@@ -170,7 +177,7 @@ class bayessian_bern_emb_data():
                         embedding_matrix[index] = embedding_vector
                     else:
                         not_found += 1
-                        print('%s word out of the vocab.' % word)
+                        self.logger.debug('%s word out of the vocab.' % word)
                 del(embeddings)
                 self.embedding_matrix = embedding_matrix
             del(self.word2vec_embedings)
@@ -192,11 +199,12 @@ class bayessian_bern_emb_data():
         self.count = count
         self.dictionary = dictionary
         self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
-        sampling_table = sequence.make_sampling_table(len(dictionary))
+        self.logger.debug('....building samples')
+        self.sampling_table = sequence.make_sampling_table(len(dictionary))
         couples, labels = skipgrams(data,
                                     len(dictionary),
                                     window_size=self.cs,
-                                    sampling_table=sampling_table,
+                                    sampling_table=self.sampling_table,
                                     negative_samples=self.ns)
         del data
         self.labels = np.array(labels)
@@ -205,9 +213,11 @@ class bayessian_bern_emb_data():
         del couples
         self.word_target = np.array(word_target, dtype="int32")
         self.word_context = np.array(word_context, dtype="int32")
+        self.logger.debug('....corpus generated')
         with open(self.dir_name+'/vocab.tsv', 'w') as txt:
             for word in self.words:
                 txt.write(word + '\n')
+        self.logger.debug('....vocab writen')
 
     def read_embeddings(self, emb_file):
         # load  embeddings
@@ -225,8 +235,7 @@ class bayessian_bern_emb_data():
         # load  embeddings
         return KeyedVectors.load_word2vec_format(emb_file, binary=True)
 
-    def batch_generator(self):
-        batch_size = self.n_minibatch
+    def batch_generator(self, batch_size):
         data_target = self.word_target
         data_context = self.word_context
         data_labels = self.labels
@@ -246,13 +255,20 @@ class bayessian_bern_emb_data():
             yield words_target, words_context, labels
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
-             ones_placeholder, zeros_placeholder, shuffling = False):
+             ones_placeholder, zeros_placeholder, n_minibatch):
         chars_target, chars_context, labels = self.batch.next()
-        if shuffling:
-            labels = np.random.permutation(labels)
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
-                ones_placeholder: np.ones((self.n_minibatch), dtype=np.int32),
-                zeros_placeholder: np.zeros((self.n_minibatch), dtype=np.int32)
+                ones_placeholder: np.ones((n_minibatch), dtype=np.int32),
+                zeros_placeholder: np.zeros((n_minibatch), dtype=np.int32)
                 }
+
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['logger']
+        return state

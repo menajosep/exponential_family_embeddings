@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 import zipfile
 import numpy as np
+import logging
 
 from six.moves import urllib
 
@@ -39,7 +40,7 @@ def get_optimal():
     return optimals
 
 
-def is_goog_embedding(sigmas):
+def is_good_embedding(sigmas):
     threshold = 1e-3
     optimals = get_optimal()
     hist = plt.hist(sigmas, bins=100, color='green', label='sigma values')
@@ -76,3 +77,25 @@ def variable_summaries(summary_name, var):
         tf.summary.scalar('max', tf.reduce_max(var))
         tf.summary.scalar('min', tf.reduce_min(var))
 
+
+def get_logger():
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # create logger
+    logger = logging.getLogger("logging_songscuncert")
+    logger.setLevel(logging.DEBUG)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter("%(asctime)s;%(levelname)s;%(message)s")
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    return logger
