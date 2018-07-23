@@ -4,6 +4,7 @@ from keras.preprocessing import sequence
 from keras.preprocessing.sequence import skipgrams
 import collections
 from gensim.models import KeyedVectors
+import pickle
 
 class bern_emb_data():
     def __init__(self, cs, ns, n_minibatch, L):
@@ -122,6 +123,13 @@ class bayessian_bern_emb_data():
         self.logger.debug('....building corpus')
         self.build_dataset(words)
         self.N = len(self.word_target)
+        pickle.dump(self.dictionary, open(dir_name + "/dictionary.dat", "wb+"))
+        pickle.dump(self.words, open(dir_name + "/words.dat", "wb+"))
+        pickle.dump(self.counter, open(dir_name + "/counter.dat", "wb+"))
+        pickle.dump(self.sampling_table, open(dir_name + "/sampling_table.dat", "wb+"))
+        pickle.dump(self.labels, open(dir_name + "/labels.dat", "wb+"))
+        pickle.dump(self.word_target, open(dir_name + "/word_target.dat", "wb+"))
+        pickle.dump(self.word_context, open(dir_name + "/word_context.dat", "wb+"))
 
 
     def build_dataset(self, words):
