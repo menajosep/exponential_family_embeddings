@@ -51,7 +51,7 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
             for sentence in sentences:
                 padding = ['UNK'] * int(context_size/2)
                 words = sentence.split()
-                words = padding + words + padding
+                #words = padding + words + padding
                 if len(words) > context_size:
                     index = 0
                     for word in words[int(context_size/2):len(words)-int(context_size/2)]:
