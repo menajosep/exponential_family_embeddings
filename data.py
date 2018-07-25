@@ -39,14 +39,11 @@ class bayessian_bern_emb_data():
                 self.custom_embedings = self.read_embeddings(custom_file)
         self.logger.debug('....building corpus')
         self.build_dataset(sentences)
-        self.N = len(self.word_target)
+        self.N = len(self.samples)
         pickle.dump(self.dictionary, open(dir_name + "/dictionary.dat", "wb+"))
         pickle.dump(self.words, open(dir_name + "/words.dat", "wb+"))
         pickle.dump(self.counter, open(dir_name + "/counter.dat", "wb+"))
-        pickle.dump(self.sampling_table, open(dir_name + "/sampling_table.dat", "wb+"))
-        pickle.dump(self.labels, open(dir_name + "/labels.dat", "wb+"))
-        pickle.dump(self.word_target, open(dir_name + "/word_target.dat", "wb+"))
-        pickle.dump(self.word_context, open(dir_name + "/word_context.dat", "wb+"))
+        pickle.dump(self.samples, open(dir_name + "/samples.dat", "wb+"))
 
 
     def build_dataset(self, sentences):
@@ -119,22 +116,17 @@ class bayessian_bern_emb_data():
         self.positive_word_sampling_indexes = dict()
         self.negative_word_sampling_indexes = dict()
         for key in self.reverse_dictionary:
-            self.positive_word_sampling_indexes[key] = -1
-            self.negative_word_sampling_indexes[key] = -1
+            self.positive_word_sampling_indexes[key] = []
+            self.negative_word_sampling_indexes[key] = []
         for i in range(len(self.samples)):
             if self.samples[i][2] == 1:
-                self.positive_word_sampling_indexes[self.samples[i][0]] = i
+                self.positive_word_sampling_indexes[self.samples[i][0]].append(i)
             else:
-                self.negative_word_sampling_indexes[self.samples[i][0]] = i
+                self.negative_word_sampling_indexes[self.samples[i][0]].append(i)
 
 
         #shuffle(samples)
         self.logger.debug('....finish parallel processing')
-        #target_words, context_words, labels = zip(*samples)
-        #self.labels = np.array(labels)
-        #del samples
-        #self.word_target = np.array(target_words, dtype="int32")
-        #self.word_context = np.array(context_words, dtype="int32")
         self.logger.debug('....corpus generated')
         self.logger.debug('....store vocab')
         with open(self.dir_name+'/vocab.tsv', 'w') as txt:
@@ -173,14 +165,32 @@ class bayessian_bern_emb_data():
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size):
-        data_target = self.word_target
-        data_context = self.word_context
-        data_labels = self.labels
+        epoch_samples = []
+        for word in self.dictionary:
+            if word != 'UNK':
+                positive_word_sampling_indexes = self.positive_word_sampling_indexes[self.dictionary[word]]
+                pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
+                epoch_samples.append(self.samples[positive_word_sampling_indexes[pos_random_index]])
+                neg_samples_indexes = []
+                while len(neg_samples_indexes) < self.ns:
+                    negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
+                    neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
+                    if neg_random_index not in neg_samples_indexes:
+                        neg_samples_indexes.append(neg_random_index)
+                        epoch_samples.append(self.samples[negative_word_sampling_indexes[neg_random_index]])
+        shuffle(epoch_samples)
+        target_words, context_words, labels = zip(*epoch_samples)
+        labels = np.array(labels)
+        word_target = np.array(target_words, dtype="int32")
+        word_context = np.array(context_words, dtype="int32")
+        data_target = word_target
+        data_context = word_context
+        data_labels = labels
         while True:
             if data_target.shape[0] < batch_size:
-                data_target = np.hstack([data_target, self.word_target])
-                data_context = np.hstack([data_context, self.word_context])
-                data_labels = np.hstack([data_labels, self.labels])
+                data_target = np.hstack([data_target, word_target])
+                data_context = np.hstack([data_context, word_context])
+                data_labels = np.hstack([data_labels, labels])
                 if data_target.shape[0] < batch_size:
                     continue
             words_target = data_target[:batch_size]

@@ -12,8 +12,8 @@ from models import *
 
 
 def get_n_iters():
-    n_batches = len(d.word_target) / d.n_minibatch
-    if len(d.word_target) % d.n_minibatch > 0:
+    n_batches = len(d.dictionary) / d.n_minibatch
+    if len(d.dictionary) % d.n_minibatch > 0:
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
 
@@ -40,14 +40,13 @@ pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 
 # MODEL
 d = pickle.load(open(dir_name + "/data.dat", "rb+"))
-d.batch = d.batch_generator(args.mb)
 m = bayesian_emb_model(d, d.K, sess, dir_name)
 sigmas_list = list()
 
 
 # TRAINING
 n_iters, n_batches = get_n_iters()
-kl_scaling_weights = get_kl_weights(n_batches)
+#kl_scaling_weights = get_kl_weights(n_batches)
 logger.debug('init training number of iters '+str(n_iters)+' and batches '+str(n_batches))
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
@@ -57,21 +56,23 @@ m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
 init = tf.global_variables_initializer()
 sess.run(init)
 logger.debug('....starting training')
-for i in range(m.inference.n_iter):
-    info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
-                                                    m.context_placeholder,
-                                                    m.labels_placeholder,
-                                                    m.ones_placeholder,
-                                                    m.zeros_placeholder,
-                                                    args.mb))
-    m.inference.print_progress(info_dict)
-    if i % 10000 == 0:
-        m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
-        sigmas = m.sigU.eval()[:, 0]
-        sigmas_list.append(sigmas)
-        pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "wb+"))
-        if is_good_embedding(sigmas):
-            break
+for i in range(args.n_epochs):
+    d.batch = d.batch_generator(args.mb)
+    for i in range(n_batches):
+        info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
+                                                        m.context_placeholder,
+                                                        m.labels_placeholder,
+                                                        m.ones_placeholder,
+                                                        m.zeros_placeholder,
+                                                        args.mb))
+        m.inference.print_progress(info_dict)
+        if i % 10000 == 0:
+            m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
+            sigmas = m.sigU.eval()[:, 0]
+            sigmas_list.append(sigmas)
+            pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "wb+"))
+            if is_good_embedding(sigmas):
+                break
 
 m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
 logger.debug('training finished. Results are saved in ' + dir_name)

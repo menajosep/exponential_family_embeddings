@@ -35,7 +35,7 @@ def read_data(filename):
         with z.open(z.namelist()[0]) as f:
             for line in f:
                 data.append(tf.compat.as_str(line))
-    return data[:1000]
+    return data
 
 
 def flatten_list(listoflists):
