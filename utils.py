@@ -35,14 +35,14 @@ def read_data(filename):
         with z.open(z.namelist()[0]) as f:
             for line in f:
                 data.append(tf.compat.as_str(line))
-    return data
+    return data[:1000]
 
 
 def flatten_list(listoflists):
     return list(chain.from_iterable(listoflists))
 
 
-def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int, sampling_table:dict):
+def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int):
     """Generate a function that will clean and tokenize text."""
     def process_sentences(sentences):
         samples = []
@@ -55,7 +55,7 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                 if len(words) > context_size:
                     index = 0
                     for word in words[int(context_size/2):len(words)-int(context_size/2)]:
-                        if word in dictionary_keys and word != 'UNK' and sampling_table[word] < random.random() :
+                        if word in dictionary_keys and word != 'UNK':
                             target_word_index = dictionary[word]
                             local_context_words_indexes = [i for i in range(index, index + context_size + 1)]
                             local_context_words_indexes.remove(index+int(context_size/2))

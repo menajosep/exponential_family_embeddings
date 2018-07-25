@@ -67,7 +67,7 @@ class bayessian_bern_emb_data():
                 dictionary[word] = len(dictionary)
         self.L = len(dictionary)
         self.logger.debug("dictionary size" + str(len(dictionary)))
-        reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+        self.reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
         if self.emb_type:
             if self.emb_type == 'word2vec':
                 self.K = self.word2vec_embedings.vector_size
@@ -111,18 +111,30 @@ class bayessian_bern_emb_data():
             del(self.custom_embedings)
 
         self.logger.debug('....Build sampling table')
-        self.build_sampling_table(self.counter)
+        #self.build_sampling_table(self.counter)
         self.dictionary = dictionary
-        self.words = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
+        self.words = [self.reverse_dictionary[x] for x in range(len(self.reverse_dictionary))]
         self.logger.debug('....start parallele processing')
-        samples = self.parallel_process_text(sentences)
-        shuffle(samples)
+        self.samples = self.parallel_process_text(sentences)
+        self.positive_word_sampling_indexes = dict()
+        self.negative_word_sampling_indexes = dict()
+        for key in self.reverse_dictionary:
+            self.positive_word_sampling_indexes[key] = -1
+            self.negative_word_sampling_indexes[key] = -1
+        for i in range(len(self.samples)):
+            if self.samples[i][2] == 1:
+                self.positive_word_sampling_indexes[self.samples[i][0]] = i
+            else:
+                self.negative_word_sampling_indexes[self.samples[i][0]] = i
+
+
+        #shuffle(samples)
         self.logger.debug('....finish parallel processing')
-        target_words, context_words, labels = zip(*samples)
-        self.labels = np.array(labels)
-        del samples
-        self.word_target = np.array(target_words, dtype="int32")
-        self.word_context = np.array(context_words, dtype="int32")
+        #target_words, context_words, labels = zip(*samples)
+        #self.labels = np.array(labels)
+        #del samples
+        #self.word_target = np.array(target_words, dtype="int32")
+        #self.word_context = np.array(context_words, dtype="int32")
         self.logger.debug('....corpus generated')
         self.logger.debug('....store vocab')
         with open(self.dir_name+'/vocab.tsv', 'w') as txt:
@@ -157,7 +169,7 @@ class bayessian_bern_emb_data():
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
-        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.sampling_table)
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs)
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size):
