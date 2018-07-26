@@ -12,7 +12,7 @@ from models import *
 
 
 def get_n_iters():
-    n_batches = len(d.dictionary) / d.n_minibatch
+    n_batches = (len(d.dictionary) * (int(args.ns) + 1)) / d.n_minibatch
     if len(d.dictionary) % d.n_minibatch > 0:
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
