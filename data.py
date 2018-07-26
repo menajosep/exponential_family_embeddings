@@ -202,13 +202,15 @@ class bayessian_bern_emb_data():
             yield words_target, words_context, labels
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
-             ones_placeholder, zeros_placeholder, n_minibatch):
+             ones_placeholder, zeros_placeholder, learning_rate_placeholder,
+             n_minibatch, learning_rate):
         chars_target, chars_context, labels = self.batch.__next__()
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
                 ones_placeholder: np.ones(n_minibatch, dtype=np.int32),
-                zeros_placeholder: np.zeros(n_minibatch, dtype=np.int32)
+                zeros_placeholder: np.zeros(n_minibatch, dtype=np.int32),
+                learning_rate_placeholder: learning_rate
                 }
 
     def build_sampling_table(self, count_words):

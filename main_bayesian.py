@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow.python.training.adam import AdamOptimizer
+from tensorflow.python.training.gradient_descent import GradientDescentOptimizer
 import matplotlib
 matplotlib.use('Agg')
 
@@ -42,13 +43,14 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
-                            args.emb_type, args.word2vec_file, args.glove_file,
-                            args.fasttext_file, args.custom_file, dir_name, logger)
-pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
+# d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
+#                             args.emb_type, args.word2vec_file, args.glove_file,
+#                             args.fasttext_file, args.custom_file, dir_name, logger)
+# pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 
 # MODEL
-d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+# d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+d = pickle.load(open("fits/local/data.dat", "rb+"))
 m = bayesian_emb_model(d, d.K, sess, dir_name)
 sigmas_list = list()
 
@@ -59,16 +61,17 @@ n_iters, n_batches = get_n_iters()
 learning_rates = []
 for i in range(n_iters):
     learning_rates.append(clr(i, 4*n_batches, 0.0001, 0.1))
-learning_rates = np.array(learning_rates)
+#learning_rates = np.array(learning_rates)
 logger.debug('init training number of iters '+str(n_iters)+' and batches '+str(n_batches))
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
                        #kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
-                       optimizer=AdamOptimizer(learning_rate=learning_rates)
+                       optimizer=AdamOptimizer(learning_rate=m.learning_rate_placeholder)
                        )
 init = tf.global_variables_initializer()
 sess.run(init)
 logger.debug('....starting training')
+iteration = 0
 for i in range(args.n_epochs):
     d.batch = d.batch_generator(args.mb)
     for i in range(n_batches):
@@ -77,7 +80,10 @@ for i in range(args.n_epochs):
                                                         m.labels_placeholder,
                                                         m.ones_placeholder,
                                                         m.zeros_placeholder,
-                                                        args.mb))
+                                                        m.learning_rate_placeholder,
+                                                        args.mb,
+                                                        learning_rates[iteration]))
+        iteration += 1
         m.inference.print_progress(info_dict)
         if i % 10000 == 0:
             m.saver.save(sess, os.path.join(m.logdir, "model.ckpt"), i)
