@@ -12,7 +12,7 @@ from models import *
 
 
 def get_n_iters():
-    n_batches = len(d.dictionary) / d.n_minibatch
+    n_batches = (len(d.dictionary)*(int(args.ns) +1)) / d.n_minibatch
     if len(d.dictionary) % d.n_minibatch > 0:
         n_batches += 1
     return int(n_batches) * args.n_epochs, int(n_batches)
@@ -25,6 +25,15 @@ def get_kl_weights(n_batches):
         weight = (2 ** (weights_lim - i)) / ((2 ** n_batches) - 1)
         weights[i] = weight
     return weights
+
+
+def clr(clr_iteration, step_size, base_lr, max_lr):
+    # Triangular2
+    scale_fn = lambda x: 1 / (2. ** (x - 1))
+    cycle = np.floor(1 + clr_iteration / (2 * step_size))
+    x = np.abs(clr_iteration / step_size - 2 * cycle + 1)
+    return base_lr + (max_lr - base_lr) * np.maximum(0, (1 - x)) * scale_fn(cycle)
+
 
 logger = get_logger()
 
@@ -47,11 +56,15 @@ sigmas_list = list()
 # TRAINING
 n_iters, n_batches = get_n_iters()
 #kl_scaling_weights = get_kl_weights(n_batches)
+learning_rates = []
+for i in range(n_iters):
+    learning_rates.append(clr(i, 4*n_batches, 0.0001, 0.1))
+learning_rates = np.array(learning_rates)
 logger.debug('init training number of iters '+str(n_iters)+' and batches '+str(n_batches))
 m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        scale={m.y_pos: n_batches, m.y_neg: n_batches / args.ns},
                        #kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
-                       optimizer=AdamOptimizer(learning_rate=0.01)
+                       optimizer=AdamOptimizer(learning_rate=learning_rates)
                        )
 init = tf.global_variables_initializer()
 sess.run(init)
