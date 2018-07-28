@@ -35,7 +35,7 @@ def read_data(filename):
         with z.open(z.namelist()[0]) as f:
             for line in f:
                 data.append(tf.compat.as_str(line))
-    return data[:10000]
+    return data
 
 
 def flatten_list(listoflists):
@@ -168,3 +168,46 @@ def get_logger():
     # add ch to logger
     logger.addHandler(ch)
     return logger
+
+
+def get_n_iters(ns, n_epochs, batch_size, dictionary):
+    n_batches = (len(dictionary)*(int(ns) +1)) / batch_size
+    if len(dictionary) % batch_size > 0:
+        n_batches += 1
+    return int(n_batches) * n_epochs, int(n_batches)
+
+
+def get_kl_weights(n_batches):
+    weights = np.full(n_batches, 1./((2 ** 1000) - 1), dtype=np.float64)
+    weights_lim = min(n_batches, 1000)
+    for i in range(weights_lim):
+        weight = (2 ** (weights_lim - i)) / ((2 ** n_batches) - 1)
+        weights[i] = weight
+    return weights
+
+
+def clr(clr_iteration, clr_type, step_size, base_lr, max_lr):
+    if clr_type == 'triangular':
+        scale_fn = lambda x: 1.
+    elif clr_type == 'triangular2':
+        scale_fn = lambda x: 1 / (2. ** (x - 1))
+    elif clr_type == 'exp_range':
+        gamma = 1.
+        scale_fn = lambda x: gamma ** (x)
+    else:
+        scale_fn = lambda x: x
+
+    cycle = np.floor(1 + clr_iteration / (2 * step_size))
+    x = np.abs(clr_iteration / step_size - 2 * cycle + 1)
+    return base_lr + (max_lr - base_lr) * np.maximum(0, (1 - x)) * scale_fn(cycle)
+
+
+def get_learning_rates(clr_type, n_iters, n_cycles, base_lr, max_lr, default_lr):
+    lrs = []
+    for i in range(n_iters):
+        if clr_type is not None:
+            step_size = n_iters / (2 * n_cycles)
+            lrs.append(clr(i, clr_type, step_size, base_lr, max_lr))
+        else:
+            lrs.append(default_lr)
+    return lrs

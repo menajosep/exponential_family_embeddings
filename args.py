@@ -25,6 +25,9 @@ def parse_args():
         parser.add_argument('--mb', type=int, default=5000,
                             help='Minibatch size. Default is 5000.')
 
+        parser.add_argument('--lr', type=float, default=0.01,
+                            help='Learning rate. Omitted if clr is used. Default is 0.01.')
+
         parser.add_argument('--sig', type=int, default=10.0,
                             help='Prior variance (regulariztion).')
 
@@ -45,6 +48,25 @@ def parse_args():
 
         parser.add_argument('--custom_file', type=str, default=None,
                             help='custom previously trained embeddings')
+
+        parser.add_argument('--clr_type', type=str, default=None,
+                            help='type of cyclic learning rate: triangular|triangular2|exp_range',
+                            required=False,
+                            choices=['triangular', 'triangular2', 'exp_range'])
+
+        parser.add_argument('--base_lr', type=float, default=None,
+                            help='low bound lr for cyclic learning rate',
+                            required=False)
+
+        parser.add_argument('--max_lr', type=float, default=None,
+                            help='high bound lr for cyclic learning rate',
+                            required=False)
+
+        parser.add_argument('--clr_cycles', type=int, default=2,
+                            help='Number of cycles for cyclic learning rate',
+                            required=False)
+
+
 
         args =  parser.parse_args()
         dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
