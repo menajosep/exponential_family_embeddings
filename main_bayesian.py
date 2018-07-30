@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow.python.training.adam import AdamOptimizer
-from tensorflow.python.training.gradient_descent import GradientDescentOptimizer
 import matplotlib
 matplotlib.use('Agg')
 
@@ -19,14 +18,14 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-# d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
-#                            args.emb_type, args.word2vec_file, args.glove_file,
-#                            args.fasttext_file, args.custom_file, dir_name, logger)
-# pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
+d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
+                           args.emb_type, args.word2vec_file, args.glove_file,
+                           args.fasttext_file, args.custom_file, dir_name, logger)
+pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 
 # MODEL
-# d = pickle.load(open(dir_name + "/data.dat", "rb+"))
-d = pickle.load(open("fits/local/data.dat", "rb+"))
+d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+# d = pickle.load(open("fits/local/data.dat", "rb+"))
 m = bayesian_emb_model(d, d.K, sess, dir_name)
 sigmas_list = list()
 
