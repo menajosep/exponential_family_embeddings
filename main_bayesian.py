@@ -19,14 +19,14 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
-                           args.emb_type, args.word2vec_file, args.glove_file,
-                           args.fasttext_file, args.custom_file, dir_name, logger)
-pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
+# d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
+#                            args.emb_type, args.word2vec_file, args.glove_file,
+#                            args.fasttext_file, args.custom_file, dir_name, logger)
+# pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 
 # MODEL
-d = pickle.load(open(dir_name + "/data.dat", "rb+"))
-# d = pickle.load(open("fits/local/data.dat", "rb+"))
+# d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+d = pickle.load(open("fits/local/data.dat", "rb+"))
 m = bayesian_emb_model(d, d.K, sess, dir_name)
 sigmas_list = list()
 
@@ -41,6 +41,7 @@ m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        #kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
                        optimizer=AdamOptimizer(learning_rate=m.learning_rate_placeholder)
                        )
+early_stopping = EarlyStopping(patience=15)
 init = tf.global_variables_initializer()
 sess.run(init)
 logger.debug('....starting training')
@@ -62,10 +63,10 @@ for epoch in range(args.n_epochs):
     sigmas = m.sigU.eval()[:, 0]
     sigmas_list.append(sigmas)
     pickle.dump(sigmas_list, open(dir_name + "/sigmas.dat", "wb+"))
-    if is_good_embedding(sigmas):
+    if early_stopping.is_early_stopping(get_distance(sigmas)):
         break
 
-logger.debug('training finished. Results are saved in ' + dir_name)
+logger.debug('training finished after '+str(epoch)+' epochs. Results are saved in ' + dir_name)
 m.dump(dir_name + "/variational.dat", d)
 
 logger.debug('Done')
