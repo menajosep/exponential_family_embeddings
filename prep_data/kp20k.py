@@ -40,7 +40,7 @@ with open(filename) as f:
         json_line = json.loads(line)
         data.append(get_text('abstract'))
         data.append(get_text('title'))
-dest_filename = '/Users/jose.mena/dev/personal/data/kp20k/kp20k_1line_10k.txt'
+dest_filename = '/Users/jose.mena/dev/personal/data/kp20k/kp20k_multiline.txt'
 with open(dest_filename, 'w') as f:
     for text in data:
         f.write(text+'\n')
