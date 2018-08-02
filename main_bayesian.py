@@ -40,7 +40,7 @@ m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir,
                        #kl_scaling={m.y_pos: kl_scaling_weights, m.y_neg: kl_scaling_weights},
                        optimizer=AdamOptimizer(learning_rate=m.learning_rate_placeholder)
                        )
-early_stopping = EarlyStopping(patience=15)
+early_stopping = EarlyStopping(patience=args.patience)
 init = tf.global_variables_initializer()
 sess.run(init)
 logger.debug('....starting training')

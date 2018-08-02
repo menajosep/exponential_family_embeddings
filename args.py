@@ -66,6 +66,10 @@ def parse_args():
                             help='Number of cycles for cyclic learning rate',
                             required=False)
 
+        parser.add_argument('--patience', type=int, default=15,
+                            help='Number of epochs to wait for improvements before stopping',
+                            required=False)
+
 
 
         args =  parser.parse_args()
