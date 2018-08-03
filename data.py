@@ -39,11 +39,9 @@ class bayessian_bern_emb_data():
                 self.custom_embedings = self.read_embeddings(custom_file)
         self.logger.debug('....building corpus')
         self.build_dataset(sentences)
-        self.N = len(self.samples)
         pickle.dump(self.dictionary, open(dir_name + "/dictionary.dat", "wb+"))
         pickle.dump(self.words, open(dir_name + "/words.dat", "wb+"))
         pickle.dump(self.counter, open(dir_name + "/counter.dat", "wb+"))
-        pickle.dump(self.samples, open(dir_name + "/samples.dat", "wb+"))
 
 
     def build_dataset(self, sentences):
@@ -111,19 +109,20 @@ class bayessian_bern_emb_data():
         #self.build_sampling_table(self.counter)
         self.dictionary = dictionary
         self.words = [self.reverse_dictionary[x] for x in range(len(self.reverse_dictionary))]
-        self.logger.debug('....start parallele processing')
-        self.samples = self.parallel_process_text(sentences)
+        self.logger.debug('....start parallel processing')
+        samples = self.parallel_process_text(sentences)
+        self.N = len(samples)
         self.positive_word_sampling_indexes = dict()
         self.negative_word_sampling_indexes = dict()
         for key in self.reverse_dictionary:
             self.positive_word_sampling_indexes[key] = []
             self.negative_word_sampling_indexes[key] = []
-        for i in range(len(self.samples)):
-            if self.samples[i][2] == 1:
-                self.positive_word_sampling_indexes[self.samples[i][0]].append(i)
+        for i in range(len(samples)):
+            if samples[i][2] == 1:
+                self.positive_word_sampling_indexes[samples[i][0]].append(samples[i][1])
             else:
-                self.negative_word_sampling_indexes[self.samples[i][0]].append(i)
-
+                self.negative_word_sampling_indexes[samples[i][0]].append(samples[i][1])
+        del(samples)
 
         #shuffle(samples)
         self.logger.debug('....finish parallel processing')
@@ -168,16 +167,20 @@ class bayessian_bern_emb_data():
         epoch_samples = []
         for word in self.dictionary:
             if word != 'UNK':
-                positive_word_sampling_indexes = self.positive_word_sampling_indexes[self.dictionary[word]]
-                pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
-                epoch_samples.append(self.samples[positive_word_sampling_indexes[pos_random_index]])
+                word_index = self.dictionary[word]
+                pos_samples_indexes = []
+                while len(pos_samples_indexes) < self.cs:
+                    positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
+                    pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
+                    pos_samples_indexes.append(pos_random_index)
+                    epoch_samples.append((word_index, positive_word_sampling_indexes[pos_random_index], 1))
                 neg_samples_indexes = []
                 while len(neg_samples_indexes) < self.ns:
                     negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
                     neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
                     if neg_random_index not in neg_samples_indexes:
                         neg_samples_indexes.append(neg_random_index)
-                        epoch_samples.append(self.samples[negative_word_sampling_indexes[neg_random_index]])
+                        epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
         shuffle(epoch_samples)
         target_words, context_words, labels = zip(*epoch_samples)
         labels = np.array(labels)

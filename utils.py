@@ -54,12 +54,14 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                 words = padding + words + padding
                 if len(words) > context_size:
                     index = 0
-                    for word in words[int(context_size/2):len(words)-int(context_size/2)]:
+                    for word in words:
                         if word in dictionary_keys and word != 'UNK':
+                            word_context_size = 2 * (int(random.uniform(1, int(context_size / 2)+1)))
                             target_word_index = dictionary[word]
-                            local_context_words_indexes = [i for i in range(index, index + context_size + 1)]
-                            local_context_words_indexes.remove(index+int(context_size/2))
-                            index += 1
+                            local_context_words_indexes = [i for i in range(index - int(word_context_size / 2),
+                                                                            index + int(word_context_size / 2) + 1)]
+                            local_context_words_indexes.remove(index)
+
                             for local_index in local_context_words_indexes:
                                 context_word = words[local_index]
                                 #prepare positive samples
@@ -71,6 +73,7 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                                 for i in range(neg_samples):
                                     random_neg_sample = random.randint(0, len(dictionary) - 1)
                                     samples.append((target_word_index, random_neg_sample, 0))
+                        index += 1
         except Exception as e:
             print('error '+e)
         return samples
@@ -91,7 +94,8 @@ def apply_parallel(func: Callable,
 
     try:
         chunk_size = ceil(len(data) / cpu_cores)
-        pool = Pool(cpu_cores)
+        pool = Pool(1)
+        #pool = Pool(cpu_cores)
         transformed_data = pool.map(func, chunked(data, chunk_size), chunksize=1)
     finally:
         pool.close()
