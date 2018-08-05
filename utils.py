@@ -94,8 +94,7 @@ def apply_parallel(func: Callable,
 
     try:
         chunk_size = ceil(len(data) / cpu_cores)
-        pool = Pool(1)
-        #pool = Pool(cpu_cores)
+        pool = Pool(cpu_cores)
         transformed_data = pool.map(func, chunked(data, chunk_size), chunksize=1)
     finally:
         pool.close()
