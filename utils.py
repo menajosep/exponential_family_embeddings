@@ -70,9 +70,9 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                                 else:
                                     context_word_index = dictionary['UNK']
                                 samples.append((target_word_index, context_word_index, 1))
-                                for i in range(neg_samples):
-                                    random_neg_sample = random.randint(0, len(dictionary) - 1)
-                                    samples.append((target_word_index, random_neg_sample, 0))
+                            for i in range(neg_samples):
+                                random_neg_sample = random.randint(0, len(dictionary) - 1)
+                                samples.append((target_word_index, random_neg_sample, 0))
                         index += 1
         except Exception as e:
             print('error '+e)
