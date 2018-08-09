@@ -148,50 +148,13 @@ class bayessian_bern_emb_data():
                     self.logger.debug(word + " not in embeds")
             else:
                 dictionary[word] = len(dictionary)
+        del (self.word2vec_embedings)
+        del (self.glove_embedings)
+        del (self.fasttext_embedings)
+        del (self.custom_embedings)
         self.L = len(dictionary)
         self.logger.debug("dictionary size" + str(len(dictionary)))
         reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
-        if self.emb_type:
-            if self.emb_type == 'word2vec':
-                self.K = self.word2vec_embedings.vector_size
-                # build encoder embedding matrix
-                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
-                not_found = 0
-                for word, index in dictionary.items():
-                    embedding_index = self.word2vec_embedings.vocab[word].index
-                    embedding_vector = self.word2vec_embedings.vectors[embedding_index]
-                    if embedding_vector is not None:
-                        # words not found in embedding index will be all-zeros.
-                        embedding_matrix[index] = embedding_vector
-                    else:
-                        not_found += 1
-                        self.logger.debug('%s word out of the vocab.' % word)
-                self.embedding_matrix = embedding_matrix
-            else:
-                if self.emb_type == 'glove':
-                    embeddings = self.glove_embedings
-                elif self.emb_type == 'fasttext':
-                    embeddings = self.fasttext_embedings
-                else:
-                    embeddings = self.custom_embedings
-                self.K = len(embeddings.values()[0])
-                # build encoder embedding matrix
-                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
-                not_found = 0
-                for word, index in dictionary.items():
-                    embedding_vector = embeddings.get(word)
-                    if embedding_vector is not None:
-                        # words not found in embedding index will be all-zeros.
-                        embedding_matrix[index] = embedding_vector
-                    else:
-                        not_found += 1
-                        self.logger.debug('%s word out of the vocab.' % word)
-                del(embeddings)
-                self.embedding_matrix = embedding_matrix
-            del(self.word2vec_embedings)
-            del(self.glove_embedings)
-            del(self.fasttext_embedings)
-            del(self.custom_embedings)
         data = list()
         unk_count = 0
         for word in words:
@@ -243,6 +206,61 @@ class bayessian_bern_emb_data():
         # load  embeddings
         return KeyedVectors.load_word2vec_format(emb_file, binary=True)
 
+    def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
+        self.logger = logger
+        self.word2vec_embedings = None
+        self.glove_embedings = None
+        self.fasttext_embedings = None
+        self.custom_embedings = None
+        self.emb_type = emb_type
+        self.embedding_matrix = None
+        if emb_type:
+            self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = self.read_embeddings(glove_file)
+            self.fasttext_embedings = self.read_embeddings(fasttext_file)
+            if custom_file:
+                self.custom_embedings = self.read_embeddings(custom_file)
+            if self.emb_type == 'word2vec':
+                self.K = self.word2vec_embedings.vector_size
+                # build encoder embedding matrix
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in self.dictionary.items():
+                    embedding_index = self.word2vec_embedings.vocab[word].index
+                    embedding_vector = self.word2vec_embedings.vectors[embedding_index]
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        self.logger.debug('%s word out of the vocab.' % word)
+                self.embedding_matrix = embedding_matrix
+            else:
+                if self.emb_type == 'glove':
+                    embeddings = self.glove_embedings
+                elif self.emb_type == 'fasttext':
+                    embeddings = self.fasttext_embedings
+                else:
+                    embeddings = self.custom_embedings
+                self.K = len(list(embeddings.values())[0])
+                self.logger.debug("build encoder embedding matrix")
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in self.dictionary.items():
+                    embedding_vector = embeddings.get(word)
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        self.logger.debug('%s word out of the vocab.' % word)
+                del (embeddings)
+                self.embedding_matrix = embedding_matrix
+            del (self.word2vec_embedings)
+            del (self.glove_embedings)
+            del (self.fasttext_embedings)
+            del (self.custom_embedings)
+
     def batch_generator(self, batch_size):
         data_target = self.word_target
         data_context = self.word_context
@@ -263,13 +281,15 @@ class bayessian_bern_emb_data():
             yield words_target, words_context, labels
 
     def feed(self, target_placeholder, context_placeholder, labels_placeholder,
-             ones_placeholder, zeros_placeholder, n_minibatch):
+             ones_placeholder, zeros_placeholder, learning_rate_placeholder,
+             n_minibatch, learning_rate):
         chars_target, chars_context, labels = self.batch.next()
         return {target_placeholder: chars_target,
                 context_placeholder: chars_context,
                 labels_placeholder: labels,
                 ones_placeholder: np.ones((n_minibatch), dtype=np.int32),
-                zeros_placeholder: np.zeros((n_minibatch), dtype=np.int32)
+                zeros_placeholder: np.zeros((n_minibatch), dtype=np.int32),
+                learning_rate_placeholder: learning_rate
                 }
 
     def __getstate__(self):

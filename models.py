@@ -134,6 +134,7 @@ class bayesian_emb_model():
                 self.labels_placeholder = tf.placeholder(tf.int32, shape=[d.n_minibatch])
                 self.ones_placeholder = tf.placeholder(tf.int32)
                 self.zeros_placeholder = tf.placeholder(tf.int32)
+                self.learning_rate_placeholder = tf.placeholder(tf.float32, shape=[])
 
             # Index Masks
             with tf.name_scope('priors'):
