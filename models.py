@@ -60,10 +60,10 @@ class bayesian_emb_model():
 
         # INFERENCE
         self.sigU = tf.nn.softplus(
-            tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])),
+            tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), 2*tf.ones([1, self.K])),
             name="sigmasU")
         self.sigV = tf.nn.softplus(
-            tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), tf.ones([1, self.K])),
+            tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), 2*tf.ones([1, self.K])),
             name="sigmasV")
         #self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
 
