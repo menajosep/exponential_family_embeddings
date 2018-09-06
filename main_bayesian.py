@@ -32,7 +32,7 @@ d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
 
 # MODEL
 logger.debug('....build model')
-m = bayesian_emb_model(d, d.K, sess, dir_name)
+m = bayesian_emb_model(d, d.K, sess, dir_name, args.sigma)
 sigmas_list = list()
 
 
