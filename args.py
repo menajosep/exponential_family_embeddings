@@ -70,6 +70,10 @@ def parse_args():
                             help='Number of epochs to wait for improvements before stopping',
                             required=False)
 
+        parser.add_argument('--sigma', type=int, default=8,
+                            help='Starting value for the sigmas of the embeddings',
+                            required=False)
+
 
 
         args =  parser.parse_args()

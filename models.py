@@ -11,10 +11,11 @@ from utils import *
 
 
 class bayesian_emb_model():
-    def __init__(self, d, K, sess, logdir):
+    def __init__(self, d, K, sigma, sess, logdir):
         self.K = K
         self.sess = sess
         self.logdir = logdir
+        self.sigma = sigma
 
         with tf.name_scope('model'):
             # Data Placeholder
@@ -59,11 +60,12 @@ class bayesian_emb_model():
         self.y_neg = Bernoulli(logits=self.n_eta)
 
         # INFERENCE
+        sigma_init_array = np.full((d.L, 1), self.sigma)
         self.sigU = tf.nn.softplus(
-            tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=tf.ones_initializer()), 2*tf.ones([1, self.K])),
+            tf.matmul(tf.get_variable("sigU", shape=(d.L, 1), initializer=sigma_init_array), tf.ones([1, self.K])),
             name="sigmasU")
         self.sigV = tf.nn.softplus(
-            tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=tf.ones_initializer()), 2*tf.ones([1, self.K])),
+            tf.matmul(tf.get_variable("sigV", shape=(d.L, 1), initializer=sigma_init_array), tf.ones([1, self.K])),
             name="sigmasV")
         #self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
 
