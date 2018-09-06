@@ -60,7 +60,7 @@ class bayesian_emb_model():
         self.y_neg = Bernoulli(logits=self.n_eta)
 
         # INFERENCE
-        sigma_init_array = np.full((d.L, 1), self.sigma)
+        sigma_init_array = np.full((d.L, 1), self.sigma, dtype=np.float32)
         self.sigU = tf.nn.softplus(
             tf.matmul(tf.get_variable("sigU", initializer=sigma_init_array), tf.ones([1, self.K])),
             name="sigmasU")

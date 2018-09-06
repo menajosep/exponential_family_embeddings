@@ -18,21 +18,21 @@ os.makedirs(dir_name)
 sess = ed.get_session()
 
 # DATA
-d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
-                           args.emb_type, args.word2vec_file, args.glove_file,
-                           args.fasttext_file, args.custom_file, dir_name, logger)
-logger.debug('....dump dataset')
-pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
-logger.debug('....load dataset')
-d = pickle.load(open(dir_name + "/data.dat", "rb+"))
-# d = pickle.load(open("fits/local/data.dat", "rb+"))
+# d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
+#                            args.emb_type, args.word2vec_file, args.glove_file,
+#                            args.fasttext_file, args.custom_file, dir_name, logger)
+# logger.debug('....dump dataset')
+# pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
+# logger.debug('....load dataset')
+# d = pickle.load(open(dir_name + "/data.dat", "rb+"))
+d = pickle.load(open("fits/local/data.dat", "rb+"))
 logger.debug('....load embeddings matrix')
-d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
-                           args.fasttext_file, args.custom_file, logger)
+# d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
+#                            args.fasttext_file, args.custom_file, logger)
 
 # MODEL
 logger.debug('....build model')
-m = bayesian_emb_model(d, d.K, sess, dir_name, args.sigma)
+m = bayesian_emb_model(d, d.K, args.sigma, sess, dir_name)
 sigmas_list = list()
 
 
