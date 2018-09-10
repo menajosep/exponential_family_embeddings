@@ -192,7 +192,7 @@ class bayessian_bern_emb_data():
     def batch_generator(self, batch_size):
         epoch_samples = []
         for word in self.dictionary:
-            if word != 'UNK':
+            if word != 'UNK' and word != self.exc_word:
                 word_index = self.dictionary[word]
                 pos_samples_indexes = []
                 while len(pos_samples_indexes) < self.cs:
