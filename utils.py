@@ -13,6 +13,8 @@ import random
 from math import ceil
 import logging
 
+FAKE_WORD = 'grijander'
+
 
 def maybe_download(url, filename, expected_bytes):
     """Download a file if not present, and make sure it's the right size."""
@@ -42,7 +44,7 @@ def flatten_list(listoflists):
     return list(chain.from_iterable(listoflists))
 
 
-def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int):
+def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int, exc_word:str):
     """Generate a function that will clean and tokenize text."""
     def process_sentences(sentences):
         samples = []
@@ -56,6 +58,8 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                     index = 0
                     for word in words:
                         if word in dictionary_keys and word != 'UNK':
+                            if exc_word is not None and word == exc_word:
+                                word = FAKE_WORD
                             word_context_size = 2 * (int(random.uniform(1, int(context_size / 2)+1)))
                             target_word_index = dictionary[word]
                             local_context_words_indexes = [i for i in range(index - int(word_context_size / 2),

@@ -74,6 +74,10 @@ def parse_args():
                             help='Starting value for the sigmas of the embeddings',
                             required=False)
 
+        parser.add_argument('--exc_word', type=str, default=None,
+                            help='Word to substitue for the surrogate',
+                            required=False)
+
 
 
         args =  parser.parse_args()

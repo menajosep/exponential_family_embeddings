@@ -5,11 +5,13 @@ from math import sqrt
 from random import shuffle
 import pickle
 
+FAKE_WORD = 'grijander'
+
 
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
                  emb_type, word2vec_file, glove_file,
-                 fasttext_file, custom_file, dir_name, logger):
+                 fasttext_file, custom_file, exc_word, dir_name, logger):
         assert cs % 2 == 0
         self.logger = logger
         self.logger.debug('initializing bayessian_bern_emb_data with file ' + input_file)
@@ -21,6 +23,7 @@ class bayessian_bern_emb_data():
         self.n_minibatch = n_minibatch
         self.L = L
         self.K = K
+        self.exc_word = exc_word
         self.dir_name = dir_name
         self.word2vec_embedings = None
         self.glove_embedings = None
@@ -47,6 +50,7 @@ class bayessian_bern_emb_data():
         count = [['UNK', -1]]
         count.extend(collections.Counter(''.join(sentences).split()).most_common(self.L - 1))
         self.logger.debug("original count " + str(len(count)))
+        count.append([FAKE_WORD, [item for item in count if item[0] == 'number'][0][1]])
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
@@ -115,6 +119,7 @@ class bayessian_bern_emb_data():
                 print('error')
 
         f.close()
+        embeddings_index[FAKE_WORD] = embeddings_index[self.exc_word]
         return embeddings_index
 
     def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
@@ -174,11 +179,14 @@ class bayessian_bern_emb_data():
 
     def read_word2vec_embeddings(self, emb_file):
         # load  embeddings
-        return KeyedVectors.load_word2vec_format(emb_file, binary=True)
+        word2vec = KeyedVectors.load_word2vec_format(emb_file, binary=True)
+        if self.exc_word is not None:
+            word2vec.add(FAKE_WORD, word2vec.get_vector(self.exc_word))
+        return word2vec
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
-        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs)
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.exc_word)
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size):
