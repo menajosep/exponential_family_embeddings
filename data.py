@@ -119,7 +119,8 @@ class bayessian_bern_emb_data():
                 print('error')
 
         f.close()
-        embeddings_index[FAKE_WORD] = embeddings_index[self.exc_word]
+        if self.exc_word is not None:
+            embeddings_index[FAKE_WORD] = embeddings_index[self.exc_word]
         return embeddings_index
 
     def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
