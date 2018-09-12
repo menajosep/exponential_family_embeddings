@@ -205,7 +205,8 @@ class bayessian_bern_emb_data():
                         pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
                         pos_word = positive_word_sampling_indexes[pos_random_index]
                     else:
-                        pos_word = random.randint(0, len(self.dictionary) - 1)
+                        pos_random_index = random.randint(0, len(self.dictionary) - 1)
+                        pos_word = pos_random_index
                     pos_samples_indexes.append(pos_random_index)
                     epoch_samples.append((word_index, pos_word, 1))
                 neg_samples_indexes = []
