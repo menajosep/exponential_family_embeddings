@@ -78,6 +78,10 @@ def parse_args():
                             help='Word to substitue for the surrogate',
                             required=False)
 
+        parser.add_argument('--noise', type=int, default=0,
+                            help='Number of context words to turn into noise',
+                            required=False)
+
 
 
         args =  parser.parse_args()

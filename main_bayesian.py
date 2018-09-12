@@ -52,7 +52,7 @@ sess.run(init)
 logger.debug('....starting training')
 iteration = 0
 for epoch in range(args.n_epochs):
-    d.batch = d.batch_generator(args.mb)
+    d.batch = d.batch_generator(args.mb, args.noise)
     for batch in range(n_batches):
         info_dict = m.inference.update(feed_dict=d.feed(m.target_placeholder,
                                                         m.context_placeholder,

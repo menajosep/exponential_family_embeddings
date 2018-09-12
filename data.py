@@ -189,17 +189,24 @@ class bayessian_bern_emb_data():
         process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.exc_word)
         return flatten_list(apply_parallel(process_text, data))
 
-    def batch_generator(self, batch_size):
+    def batch_generator(self, batch_size, noise):
         epoch_samples = []
         for word in self.dictionary:
             if word != 'UNK' and word != self.exc_word:
+                noise_indexes = []
+                if noise > 0:
+                    noise_indexes.extend(random.sample(range(0, self.cs), noise))
                 word_index = self.dictionary[word]
                 pos_samples_indexes = []
                 while len(pos_samples_indexes) < self.cs:
                     positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
-                    pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
+                    if len(pos_samples_indexes) not in noise_indexes:
+                        pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
+                        pos_word = positive_word_sampling_indexes[pos_random_index]
+                    else:
+                        pos_word = random.randint(0, len(self.dictionary) - 1)
                     pos_samples_indexes.append(pos_random_index)
-                    epoch_samples.append((word_index, positive_word_sampling_indexes[pos_random_index], 1))
+                    epoch_samples.append((word_index, pos_word, 1))
                 neg_samples_indexes = []
                 while len(neg_samples_indexes) < self.ns:
                     negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
