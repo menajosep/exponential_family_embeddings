@@ -6,8 +6,6 @@ from random import shuffle
 import pickle
 
 FAKE_WORD = 'grijander'
-FAKE_SENTENCE = 'wefqwf2qewfq sdfawqwef qwfasdpkpok wqefmñklwek candemor sdklfalsdjf iowejqn soajnefnq nwewefwk wenjfqkweb'
-
 
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
@@ -36,7 +34,8 @@ class bayessian_bern_emb_data():
         self.logger.debug('....reading data')
         sentences = read_data(input_file)
         if fake_sentences_number > 0:
-            fake_sentences = [FAKE_SENTENCE] * fake_sentences_number
+            self.logger.debug("sentence to repeat:"+sentences[0])
+            fake_sentences = [sentences[0]] * fake_sentences_number
             sentences.extend(fake_sentences)
         self.logger.debug('....loading embeddings file')
         if emb_type:
