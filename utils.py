@@ -51,7 +51,7 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
         dictionary_keys = list(dictionary.keys())
         try:
             for sentence in sentences:
-                padding = ['UNK'] * int(context_size/2)
+                padding = ['PADD'] * int(context_size/2)
                 words = sentence.split()
                 words = padding + words + padding
                 if len(words) > context_size:
@@ -68,12 +68,13 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
 
                             for local_index in local_context_words_indexes:
                                 context_word = words[local_index]
-                                #prepare positive samples
-                                if context_word in dictionary_keys:
-                                    context_word_index = dictionary[context_word]
-                                else:
-                                    context_word_index = dictionary['UNK']
-                                samples.append((target_word_index, context_word_index, 1))
+                                if context_word != 'PADD':
+                                    #prepare positive samples
+                                    if context_word in dictionary_keys:
+                                        context_word_index = dictionary[context_word]
+                                    else:
+                                        context_word_index = dictionary['UNK']
+                                    samples.append((target_word_index, context_word_index, 1))
                             for i in range(neg_samples):
                                 random_neg_sample = random.randint(0, len(dictionary) - 1)
                                 samples.append((target_word_index, random_neg_sample, 0))
