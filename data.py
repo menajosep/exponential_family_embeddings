@@ -34,8 +34,8 @@ class bayessian_bern_emb_data():
         self.logger.debug('....reading data')
         sentences = read_data(input_file)
         if fake_sentences_number > 0:
-            self.logger.debug("sentence to repeat:"+sentences[517145])
-            fake_sentences = [sentences[517145]] * fake_sentences_number
+            self.logger.debug("sentence to repeat:"+sentences[468096])
+            fake_sentences = [sentences[468096]] * fake_sentences_number
             sentences.extend(fake_sentences)
         self.logger.debug('....loading embeddings file')
         if emb_type:
