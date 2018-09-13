@@ -199,28 +199,33 @@ class bayessian_bern_emb_data():
         epoch_samples = []
         for word in self.dictionary:
             if word != 'UNK' and word != self.exc_word:
-                noise_indexes = []
-                if noise > 0:
-                    noise_indexes.extend(random.sample(range(0, self.cs), noise))
                 word_index = self.dictionary[word]
-                pos_samples_indexes = []
-                while len(pos_samples_indexes) < self.cs:
-                    positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
-                    if len(pos_samples_indexes) not in noise_indexes:
-                        pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
-                        pos_word = positive_word_sampling_indexes[pos_random_index]
-                    else:
-                        pos_random_index = random.randint(0, len(self.dictionary) - 1)
-                        pos_word = pos_random_index
-                    pos_samples_indexes.append(pos_random_index)
-                    epoch_samples.append((word_index, pos_word, 1))
-                neg_samples_indexes = []
-                while len(neg_samples_indexes) < self.ns:
-                    negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
-                    neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
-                    if neg_random_index not in neg_samples_indexes:
-                        neg_samples_indexes.append(neg_random_index)
-                        epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
+                positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
+                negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
+                if len(positive_word_sampling_indexes) >= self.cs:
+                    noise_indexes = []
+                    if noise > 0:
+                        noise_indexes.extend(random.sample(range(0, self.cs), noise))
+
+                    pos_samples_indexes = []
+                    while len(pos_samples_indexes) < self.cs:
+                        if len(pos_samples_indexes) not in noise_indexes:
+                            pos_random_index = random.randint(0, len(positive_word_sampling_indexes)-1)
+                            pos_word = positive_word_sampling_indexes[pos_random_index]
+                        else:
+                            pos_random_index = random.randint(0, len(self.dictionary) - 1)
+                            pos_word = pos_random_index
+                        pos_samples_indexes.append(pos_random_index)
+                        epoch_samples.append((word_index, pos_word, 1))
+                    neg_samples_indexes = []
+                    while len(neg_samples_indexes) < self.ns:
+
+                        neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
+                        if neg_random_index not in neg_samples_indexes:
+                            neg_samples_indexes.append(neg_random_index)
+                            epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
+                else:
+                    self.logger.warn('%s word nos hot enough positive samples.' % word)
         shuffle(epoch_samples)
         target_words, context_words, labels = zip(*epoch_samples)
         labels = np.array(labels)
