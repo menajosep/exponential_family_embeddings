@@ -82,6 +82,10 @@ def parse_args():
                             help='Number of context words to turn into noise',
                             required=False)
 
+        parser.add_argument('--fake_sentences', type=int, default=0,
+                           help='Number of times we introduce the fake sentence',
+                           required=False)
+
 
 
         args =  parser.parse_args()
