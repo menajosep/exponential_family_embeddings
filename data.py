@@ -224,8 +224,6 @@ class bayessian_bern_emb_data():
                         if neg_random_index not in neg_samples_indexes:
                             neg_samples_indexes.append(neg_random_index)
                             epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
-                else:
-                    self.logger.warn('%s word nos hot enough positive samples.' % word)
         shuffle(epoch_samples)
         target_words, context_words, labels = zip(*epoch_samples)
         labels = np.array(labels)
