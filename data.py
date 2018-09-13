@@ -202,7 +202,7 @@ class bayessian_bern_emb_data():
                 word_index = self.dictionary[word]
                 positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
                 negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]
-                if len(positive_word_sampling_indexes) >= self.cs:
+                if len(positive_word_sampling_indexes) > 0:
                     noise_indexes = []
                     if noise > 0:
                         noise_indexes.extend(random.sample(range(0, self.cs), noise))
