@@ -5,12 +5,11 @@ from math import sqrt
 from random import shuffle
 import pickle
 
-FAKE_WORD = 'grijander'
 
 class bayessian_bern_emb_data():
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
                  emb_type, word2vec_file, glove_file,
-                 fasttext_file, custom_file, exc_word,
+                 fasttext_file, custom_file,
                  fake_sentences_number, dir_name, logger):
         assert cs % 2 == 0
         self.logger = logger
@@ -23,7 +22,6 @@ class bayessian_bern_emb_data():
         self.n_minibatch = n_minibatch
         self.L = L
         self.K = K
-        self.exc_word = exc_word
         self.dir_name = dir_name
         self.word2vec_embedings = None
         self.glove_embedings = None
@@ -34,8 +32,9 @@ class bayessian_bern_emb_data():
         self.logger.debug('....reading data')
         sentences = read_data(input_file)
         if fake_sentences_number > 0:
-            self.logger.debug("sentence to repeat:"+sentences[468096])
-            fake_sentences = [sentences[468096]] * fake_sentences_number
+            fake_sentence = 'heat oil in a wok or heavy pot over medium heat gently cook and stir pork breaking up meat as it cooks until browned and crumbly about number minutes add garlic cook and stir until fragrant about number seconds add squash and salt cover wok and cook stirring number to number times over high heat for number to number minutes'
+            self.logger.debug("sentence to repeat:"+fake_sentence)
+            fake_sentences = [fake_sentence] * fake_sentences_number
             sentences.extend(fake_sentences)
         self.logger.debug('....loading embeddings file')
         if emb_type:
@@ -54,7 +53,6 @@ class bayessian_bern_emb_data():
         count = [['UNK', -1]]
         count.extend(collections.Counter(''.join(sentences).split()).most_common(self.L - 1))
         self.logger.debug("original count " + str(len(count)))
-        count.append([FAKE_WORD, [item for item in count if item[0] == 'number'][0][1]])
         dictionary = dict()
         self.counter = dict()
         for word, _ in count:
@@ -121,10 +119,8 @@ class bayessian_bern_emb_data():
                         embeddings_index[word] = coefs
             except ValueError as ve:
                 print('error')
-
         f.close()
-        if self.exc_word is not None:
-            embeddings_index[FAKE_WORD] = embeddings_index[self.exc_word]
+
         return embeddings_index
 
     def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
@@ -185,19 +181,17 @@ class bayessian_bern_emb_data():
     def read_word2vec_embeddings(self, emb_file):
         # load  embeddings
         word2vec = KeyedVectors.load_word2vec_format(emb_file, binary=True)
-        if self.exc_word is not None:
-            word2vec.add(FAKE_WORD, word2vec.get_vector(self.exc_word))
         return word2vec
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
-        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.exc_word)
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs)
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size, noise):
         epoch_samples = []
         for word in self.dictionary:
-            if word != 'UNK' and word != self.exc_word:
+            if word != 'UNK':
                 word_index = self.dictionary[word]
                 positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
                 negative_word_sampling_indexes = self.negative_word_sampling_indexes[self.dictionary[word]]

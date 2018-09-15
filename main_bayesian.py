@@ -10,6 +10,7 @@ from args import *
 from data import *
 from models import *
 
+FAKE_WORD = 'grijander'
 
 logger = get_logger()
 
@@ -20,17 +21,23 @@ sess = ed.get_session()
 # DATA
 d = bayessian_bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.K,
                            args.emb_type, args.word2vec_file, args.glove_file,
-                           args.fasttext_file, args.custom_file, args.exc_word,
+                           args.fasttext_file, args.custom_file,
                            args.fake_sentences, dir_name, logger)
 logger.debug('....dump dataset')
 pickle.dump(d, open(dir_name + "/data.dat", "wb+"))
 logger.debug('....load dataset')
 d = pickle.load(open(dir_name + "/data.dat", "rb+"))
-# d = pickle.load(open("fits/local/data.dat", "rb+"))
+# d = pickle.load(open("data/recipes/data.dat", "rb+"))
 logger.debug('....load embeddings matrix')
+if args.fake_word is not None:
+    d.dictionary[FAKE_WORD] = len(d.dictionary)
+    d.L = d.L + 1
+    d.positive_word_sampling_indexes[FAKE_WORD] = d.positive_word_sampling_indexes[d.dictionary[args.fake_word]]
+    d.negative_word_sampling_indexes[FAKE_WORD] = d.negative_word_sampling_indexes[d.dictionary[args.fake_word]]
 d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                            args.fasttext_file, args.custom_file, logger)
-
+if args.fake_word is not None:
+    d.embedding_matrix[d.dictionary[FAKE_WORD]] = d.embedding_matrix[d.dictionary[args.fake_word]]
 # MODEL
 logger.debug('....build model')
 m = bayesian_emb_model(d, d.K, args.sigma, sess, dir_name)
