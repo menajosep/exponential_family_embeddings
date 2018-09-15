@@ -32,7 +32,7 @@ class bayessian_bern_emb_data():
         self.logger.debug('....reading data')
         sentences = read_data(input_file)
         if fake_sentences_number > 0:
-            fake_sentence = 'heat oil in a wok or heavy pot over medium heat gently cook and stir pork breaking up meat as it cooks until browned and crumbly about number minutes add garlic cook and stir until fragrant about number seconds add squash and salt cover wok and cook stirring number to number times over high heat for number to number minutes'
+            fake_sentence = 'in a medium bowl beat the butter brown sugar hone and egg on medium speed scraping bowl constantly until smooth'
             self.logger.debug("sentence to repeat:"+fake_sentence)
             fake_sentences = [fake_sentence] * fake_sentences_number
             sentences.extend(fake_sentences)
