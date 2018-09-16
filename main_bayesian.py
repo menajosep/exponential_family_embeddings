@@ -32,8 +32,8 @@ logger.debug('....load embeddings matrix')
 if args.fake_word is not None:
     d.dictionary[FAKE_WORD] = len(d.dictionary)
     d.L = d.L + 1
-    d.positive_word_sampling_indexes[FAKE_WORD] = d.positive_word_sampling_indexes[d.dictionary[args.fake_word]]
-    d.negative_word_sampling_indexes[FAKE_WORD] = d.negative_word_sampling_indexes[d.dictionary[args.fake_word]]
+    d.positive_word_sampling_indexes[d.dictionary[FAKE_WORD]] = d.positive_word_sampling_indexes[d.dictionary[args.fake_word]]
+    d.negative_word_sampling_indexes[d.dictionary[FAKE_WORD]] = d.negative_word_sampling_indexes[d.dictionary[args.fake_word]]
 d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                            args.fasttext_file, args.custom_file, logger)
 if args.fake_word is not None:
