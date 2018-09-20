@@ -37,6 +37,8 @@ class DeterministicSamplingTestCase(unittest.TestCase):
         self.model = bayesian_emb_model(self.det_data, self.dimension, self.sigma, self.sess, self.dir_name)
 
     def tearDown(self):
+        tf.reset_default_graph()
+        del self.model
         del self.det_data
 
     def test_no_uncertainty(self):
@@ -57,24 +59,24 @@ class DeterministicSamplingTestCase(unittest.TestCase):
         self.assertTrue(sigmas[2] < 0.005,
                         msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
 
-    def test_inverted(self):
-        # DATA
-        self.det_data = bayessian_bern_emb_data_deterministic_inverted(self.logger,
-                                                              self.context_size,
-                                                              self.negative_samples,
-                                                              self.dimension,
-                                                              self.minibatch,
-                                                              self.repetitions)
-        # MODEL
-        self.logger.debug('....build model')
-        self.model = bayesian_emb_model(self.det_data, self.dimension, self.sigma, self.sess, self.dir_name)
-        sigmas = self.training()
-        self.assertTrue(sigmas[0] == 1.0,
-                        msg='{} should have uncertainty equals to 1'.format(self.det_data.reverse_dictionary[1]))
-        self.assertTrue(sigmas[1] < 0.005,
-                        msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
-        self.assertTrue(sigmas[2] < 0.005,
-                        msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
+    # def test_inverted(self):
+    #     # DATA
+    #     self.det_data = bayessian_bern_emb_data_deterministic_inverted(self.logger,
+    #                                                           self.context_size,
+    #                                                           self.negative_samples,
+    #                                                           self.dimension,
+    #                                                           self.minibatch,
+    #                                                           self.repetitions)
+    #     # MODEL
+    #     self.logger.debug('....build model')
+    #     self.model = bayesian_emb_model(self.det_data, self.dimension, self.sigma, self.sess, self.dir_name)
+    #     sigmas = self.training()
+    #     self.assertTrue(sigmas[0] == 1.0,
+    #                     msg='{} should have uncertainty equals to 1'.format(self.det_data.reverse_dictionary[1]))
+    #     self.assertTrue(sigmas[1] < 0.005,
+    #                     msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
+    #     self.assertTrue(sigmas[2] < 0.005,
+    #                     msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
 
     def get_n_iters(self, ns, n_epochs, batch_size, dictionary):
         n_samples = 2 * (len(dictionary)-1) * ns * self.repetitions
