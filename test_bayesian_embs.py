@@ -25,19 +25,21 @@ class DeterministicSamplingTestCase(unittest.TestCase):
         self.dimension = 300
         self.minibatch = 256
         self.repetitions = 10000
+        self.n_random_vectors = 100
         # DATA
         self.det_data = bayessian_bern_emb_data_deterministic(self.logger,
                                                               self.context_size,
                                                               self.negative_samples,
                                                               self.dimension,
                                                               self.minibatch,
-                                                              self.repetitions)
+                                                              self.repetitions,
+                                                              self.n_random_vectors)
         # MODEL
         self.logger.debug('....build model')
         self.model = bayesian_emb_model(self.det_data, self.dimension, self.sigma, self.sess, self.dir_name)
 
     def tearDown(self):
-        tf.reset_default_graph()
+        self.sess.close()
         del self.model
         del self.det_data
 

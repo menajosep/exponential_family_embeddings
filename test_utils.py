@@ -4,23 +4,30 @@ import random
 
 
 class bayessian_bern_emb_data_deterministic():
-    def __init__(self, logger, context_size, negative_samples, dimension, minibatch, repetitions):
+    def __init__(self, logger, context_size, negative_samples, dimension, minibatch, repetitions, n_random_vectors=0):
         self.logger = logger
-        self.dictionary = dict()
-        self.dictionary['UNK'] = 0
-        self.dictionary['pos'] = 1
-        self.dictionary['neg'] = 2
-        self.L = len(self.dictionary)
-        self.reverse_dictionary = dict(zip(self.dictionary.values(), self.dictionary.keys()))
         self.cs = context_size
         self.ns = negative_samples
         self.K = dimension
         self.n_minibatch = minibatch
         self.repetitions = repetitions
+        self.n_random_vectors = n_random_vectors
+
+        self.dictionary = dict()
+        self.dictionary['UNK'] = len(self.dictionary)
+        self.dictionary['pos'] = len(self.dictionary)
+        self.dictionary['neg'] = len(self.dictionary)
+        for i in range(self.n_random_vectors):
+            self.dictionary['random'+str(i+1)] = len(self.dictionary)
+        self.L = len(self.dictionary)
+        self.reverse_dictionary = dict(zip(self.dictionary.values(), self.dictionary.keys()))
+
         self.embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
         self.embedding_matrix[self.dictionary['pos']] = np.random.rand(self.K)
         self.embedding_matrix[self.dictionary['neg']] = self.get_ortogonal_vector(
             self.embedding_matrix[self.dictionary['pos']])
+        for i in range(self.n_random_vectors):
+            self.embedding_matrix[self.dictionary['random'+str(i+1)]] = np.random.rand(self.K)
         self.positive_word_sampling_indexes = dict()
         self.negative_word_sampling_indexes = dict()
         self.positive_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['pos']] * self.cs
@@ -38,7 +45,7 @@ class bayessian_bern_emb_data_deterministic():
 
     def batch_generator(self, batch_size, noise):
         epoch_samples = []
-        for word in self.dictionary:
+        for word in ['pos', 'neg']:
             for i in range(0, self.repetitions):
                 if word != 'UNK':
                     noise_indexes = []
@@ -54,10 +61,7 @@ class bayessian_bern_emb_data_deterministic():
                             pos_random_index = random.randint(0, len(positive_word_sampling_indexes) - 1)
                             pos_word = positive_word_sampling_indexes[pos_random_index]
                             if len(pos_samples_indexes) in noise_indexes:
-                                if pos_word == 1:
-                                    pos_word = 2
-                                else:
-                                    pos_word = 1
+                                pos_word = random.randint(3, self.n_random_vectors + 3)
                             pos_samples_indexes.append(pos_random_index)
                             epoch_samples.append((word_index, pos_word, 1))
                         neg_samples_indexes = []
@@ -65,10 +69,7 @@ class bayessian_bern_emb_data_deterministic():
                             neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
                             neg_word = negative_word_sampling_indexes[neg_random_index]
                             if len(pos_samples_indexes) in noise_indexes:
-                                if neg_word == 1:
-                                    neg_word = 2
-                                else:
-                                    neg_word = 1
+                                neg_word = random.randint(3, self.n_random_vectors + 3)
                             neg_samples_indexes.append(neg_random_index)
                             epoch_samples.append((word_index, neg_word, 0))
         shuffle(epoch_samples)
