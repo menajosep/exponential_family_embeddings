@@ -13,28 +13,40 @@ class bayessian_bern_emb_data_deterministic():
         self.repetitions = repetitions
         self.n_random_vectors = n_random_vectors
 
-        self.dictionary = dict()
-        self.dictionary['UNK'] = len(self.dictionary)
-        self.dictionary['pos'] = len(self.dictionary)
-        self.dictionary['neg'] = len(self.dictionary)
-        for i in range(self.n_random_vectors):
-            self.dictionary['random'+str(i+1)] = len(self.dictionary)
+        self.dictionary = self.get_dictionary()
         self.L = len(self.dictionary)
         self.reverse_dictionary = dict(zip(self.dictionary.values(), self.dictionary.keys()))
 
-        self.embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
-        self.embedding_matrix[self.dictionary['pos']] = np.random.rand(self.K)
-        self.embedding_matrix[self.dictionary['neg']] = self.get_ortogonal_vector(
-            self.embedding_matrix[self.dictionary['pos']])
-        for i in range(self.n_random_vectors):
-            self.embedding_matrix[self.dictionary['random'+str(i+1)]] = np.random.rand(self.K)
-        self.positive_word_sampling_indexes = dict()
-        self.negative_word_sampling_indexes = dict()
-        self.positive_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['pos']] * self.cs
-        self.positive_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['neg']] * self.cs
-        self.negative_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['neg']] * self.cs
-        self.negative_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['pos']] * self.cs
+        self.embedding_matrix = self.get_embeddings()
+        self.positive_word_sampling_indexes, self.negative_word_sampling_indexes = self.get_samples()
         logger.debug('bayessian_bern_emb_data_deterministic is built')
+
+    def get_samples(self):
+        positive_word_sampling_indexes = dict()
+        negative_word_sampling_indexes = dict()
+        positive_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['pos']] * self.cs
+        positive_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['neg']] * self.cs
+        negative_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['neg']] * self.cs
+        negative_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['pos']] * self.cs
+        return positive_word_sampling_indexes, negative_word_sampling_indexes
+
+    def get_embeddings(self):
+        embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+        embedding_matrix[self.dictionary['pos']] = np.random.rand(self.K)
+        embedding_matrix[self.dictionary['neg']] = self.get_ortogonal_vector(
+            embedding_matrix[self.dictionary['pos']])
+        for i in range(self.n_random_vectors):
+            embedding_matrix[self.dictionary['random' + str(i + 1)]] = np.random.rand(self.K)
+        return embedding_matrix
+
+    def get_dictionary(self):
+        dictionary = dict()
+        dictionary['UNK'] = len(dictionary)
+        dictionary['pos'] = len(dictionary)
+        dictionary['neg'] = len(dictionary)
+        for i in range(self.n_random_vectors):
+            dictionary['random' + str(i + 1)] = len(dictionary)
+        return dictionary
 
     def get_ortogonal_vector(self, v1):
         v2 = np.random.rand(self.K)
@@ -107,29 +119,14 @@ class bayessian_bern_emb_data_deterministic():
                 learning_rate_placeholder: learning_rate
                 }
 
+
 class bayessian_bern_emb_data_deterministic_inverted(bayessian_bern_emb_data_deterministic):
-    def __init__(self, logger, context_size, negative_samples, dimension, minibatch, repetitions):
-        self.logger = logger
-        self.dictionary = dict()
-        self.dictionary['UNK'] = 0
-        self.dictionary['pos'] = 1
-        self.dictionary['neg'] = 2
-        self.L = len(self.dictionary)
-        self.reverse_dictionary = dict(zip(self.dictionary.values(), self.dictionary.keys()))
-        self.cs = context_size
-        self.ns = negative_samples
-        self.K = dimension
-        self.n_minibatch = minibatch
-        self.repetitions = repetitions
-        self.embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
-        self.embedding_matrix[self.dictionary['pos']] = np.random.rand(self.K)
-        self.embedding_matrix[self.dictionary['neg']] = self.get_ortogonal_vector(
-            self.embedding_matrix[self.dictionary['pos']])
-        self.positive_word_sampling_indexes = dict()
-        self.negative_word_sampling_indexes = dict()
-        self.positive_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['neg']]
-        self.positive_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['pos']]
-        self.negative_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['pos']]
-        self.negative_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['neg']]
-        logger.debug('bayessian_bern_emb_data_deterministic is built')
+    def get_samples(self):
+        positive_word_sampling_indexes = dict()
+        negative_word_sampling_indexes = dict()
+        positive_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['neg']] * self.cs
+        positive_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['pos']] * self.cs
+        negative_word_sampling_indexes[self.dictionary['pos']] = [self.dictionary['pos']] * self.cs
+        negative_word_sampling_indexes[self.dictionary['neg']] = [self.dictionary['neg']] * self.cs
+        return positive_word_sampling_indexes, negative_word_sampling_indexes
 
