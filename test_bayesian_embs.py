@@ -18,12 +18,12 @@ class DeterministicSamplingTestCase(tf.test.TestCase):
         self.logger = get_logger()
         self.dir_name = "DeterministicSamplingTestCase"
         self.sigma = 8
-        self.epochs = 1
+        self.epochs = 100
         self.context_size = 10
         self.negative_samples = 10
         self.dimension = 300
         self.minibatch = 256
-        self.repetitions = 10
+        self.repetitions = 10000
         self.n_random_vectors = 100
         # DATA
         self.det_data = bayessian_bern_emb_data_deterministic(self.logger,
