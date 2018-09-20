@@ -45,7 +45,7 @@ class DeterministicSamplingTestCase(unittest.TestCase):
 
     def test_no_uncertainty(self):
         sigmas = self.training()
-        self.logger.debug(sigmas)
+        self.logger.debug(sigmas[:4])
         self.assertTrue(sigmas[0] == 1.0,
                         msg='{} should have uncertainty equals to 1'.format(self.det_data.reverse_dictionary[1]))
         self.assertTrue(sigmas[1] < 0.005,
@@ -54,14 +54,15 @@ class DeterministicSamplingTestCase(unittest.TestCase):
                         msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
 
     def test_no_uncertainty_noise(self):
-        sigmas = self.training(9)
-        self.logger.debug(sigmas)
-        self.assertTrue(sigmas[0] == 1.0,
-                        msg='{} should have uncertainty equals to 1'.format(self.det_data.reverse_dictionary[1]))
-        self.assertTrue(sigmas[1] < 0.005,
-                        msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
-        self.assertTrue(sigmas[2] < 0.005,
-                        msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
+        for noise in range(1, 9):
+            sigmas = self.training(noise)
+            self.logger.debug(sigmas[:4])
+            self.assertTrue(sigmas[0] == 1.0,
+                            msg='{} should have uncertainty equals to 1'.format(self.det_data.reverse_dictionary[1]))
+            self.assertTrue(sigmas[1] < 0.005,
+                            msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
+            self.assertTrue(sigmas[2] < 0.005,
+                            msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
 
     # def test_inverted(self):
     #     # DATA
