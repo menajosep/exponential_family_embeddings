@@ -80,17 +80,18 @@ class DeterministicSamplingTestCase(unittest.TestCase):
     #     self.assertTrue(sigmas[2] < 0.005,
     #                     msg='{} should be have low uncertainty'.format(self.det_data.reverse_dictionary[1]))
 
-    def get_n_iters(self, ns, n_epochs, batch_size, dictionary):
-        n_samples = 2 * (len(dictionary)-1) * ns * self.repetitions
-        n_batches = n_samples / batch_size
-        if len(dictionary) % batch_size > 0:
+    def get_n_iters(self):
+        words_number = 2 # pos and neg
+        n_samples = words_number * self.negative_samples * self.repetitions \
+                    + words_number * self.context_size * self.repetitions
+        n_batches = n_samples / self.minibatch
+        if n_samples % self.minibatch > 0:
             n_batches += 1
-        return int(n_batches) * n_epochs, int(n_batches)
+        return int(n_batches) * self.epochs, int(n_batches)
 
     def training(self, noise=0):
         # TRAINING
-        n_iters, n_batches = self.get_n_iters(self.negative_samples, self.epochs, self.minibatch,
-                                         self.det_data.dictionary)
+        n_iters, n_batches = self.get_n_iters()
         # kl_scaling_weights = get_kl_weights(n_batches)
         self.logger.debug('init training number of iters ' + str(n_iters) + ' and batches ' + str(n_batches))
         self.model.inference.initialize(n_samples=1, n_iter=n_iters, logdir=self.model.logdir,

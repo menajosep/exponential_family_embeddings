@@ -61,7 +61,7 @@ class bayessian_bern_emb_data_deterministic():
                             pos_random_index = random.randint(0, len(positive_word_sampling_indexes) - 1)
                             pos_word = positive_word_sampling_indexes[pos_random_index]
                             if len(pos_samples_indexes) in noise_indexes:
-                                pos_word = random.randint(3, self.n_random_vectors + 3)
+                                pos_word = random.randint(3, self.n_random_vectors + 3 - 1)
                             pos_samples_indexes.append(pos_random_index)
                             epoch_samples.append((word_index, pos_word, 1))
                         neg_samples_indexes = []
@@ -69,7 +69,7 @@ class bayessian_bern_emb_data_deterministic():
                             neg_random_index = random.randint(0, len(negative_word_sampling_indexes)-1)
                             neg_word = negative_word_sampling_indexes[neg_random_index]
                             if len(pos_samples_indexes) in noise_indexes:
-                                neg_word = random.randint(3, self.n_random_vectors + 3)
+                                neg_word = random.randint(3, self.n_random_vectors + 3 - 1)
                             neg_samples_indexes.append(neg_random_index)
                             epoch_samples.append((word_index, neg_word, 0))
         shuffle(epoch_samples)
