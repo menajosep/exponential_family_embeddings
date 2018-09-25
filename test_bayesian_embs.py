@@ -3,7 +3,7 @@ import unittest
 from tensorflow.python.training.adam import AdamOptimizer
 import tensorflow as tf
 
-from models import bayesian_emb_model
+from bayesian_models import bayesian_emb_model
 from test_utils import bayessian_bern_emb_data_deterministic, bayessian_bern_emb_data_deterministic_inverted
 from utils import get_logger
 import edward as ed

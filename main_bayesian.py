@@ -8,13 +8,13 @@ matplotlib.use('Agg')
 
 from args import *
 from data import *
-from models import *
+from bayesian_models import *
 
 FAKE_WORD = 'grijander'
 
 logger = get_logger()
 
-args, dir_name = parse_args()
+args, dir_name = parse_args_bayesian()
 os.makedirs(dir_name)
 sess = ed.get_session()
 

@@ -7,6 +7,7 @@ from itertools import chain
 
 from six.moves import urllib
 from pathos.multiprocessing import Pool, cpu_count
+from gensim.models import KeyedVectors
 from more_itertools import chunked
 from typing import List, Callable, Union, Any
 import random
@@ -29,13 +30,48 @@ def maybe_download(url, filename, expected_bytes):
 
 
 def read_data(filename):
-    """Extract the first file enclosed in a zip file as a list of sentences"""
     data = list()
     with zipfile.ZipFile(filename) as z:
         with z.open(z.namelist()[0]) as f:
             for line in f:
                 data.append(tf.compat.as_str(line))
     return data
+
+
+def read_words(filename):
+    data = list()
+    with zipfile.ZipFile(filename) as z:
+        with z.open(z.namelist()[0]) as f:
+            for line in f:
+                data.extend(tf.compat.as_str(line).split())
+    return data
+
+
+def read_embeddings(emb_file):
+    # load  embeddings
+    embeddings_index = {}
+    f = open(emb_file)
+    embeddings_size = 0
+    for line in f:
+        try:
+            values = line.split()
+            if embeddings_size == 0:
+                embeddings_size = len(values)
+            else:
+                if embeddings_size == len(values):
+                    word = values[0]
+                    coefs = np.asarray(values[1:], dtype='float64')
+                    embeddings_index[word] = coefs
+        except ValueError as ve:
+            print('error')
+    f.close()
+
+    return embeddings_index
+
+def read_word2vec_embeddings(emb_file):
+    # load  embeddings
+    word2vec = KeyedVectors.load_word2vec_format(emb_file, binary=True)
+    return word2vec
 
 
 def flatten_list(listoflists):

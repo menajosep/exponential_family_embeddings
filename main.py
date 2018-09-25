@@ -8,15 +8,18 @@ import pickle
 import tensorflow as tf
 
 from data import *
-from models import *
+from mle_models import *
 from args import *
+
+logger = get_logger()
 
 args, dir_name = parse_args()
 os.makedirs(dir_name)
 sess = tf.Session()
 
 # DATA
-d = bern_emb_data(args.cs, args.ns, args.mb, args.L)
+d = bern_emb_data(args.in_file, args.cs, args.ns, args.mb, args.L, args.emb_type, args.word2vec_file, args.glove_file,
+                           args.fasttext_file, logger)
 
 # MODEL
 m = bern_emb_model(d, args.K, args.sig, sess, dir_name)
@@ -35,4 +38,5 @@ for i in range(args.n_iter):
 
 print('training finished. Results are saved in '+dir_name)
 m.dump(dir_name+"/variational.dat")
-m.plot_params(dir_name, d.words[:500])
+m.plot_params(dir_name, d.labels[:500])
+logger.debug('Done')

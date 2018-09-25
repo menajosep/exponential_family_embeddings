@@ -1,9 +1,95 @@
 from utils import *
 import collections
-from gensim.models import KeyedVectors
 from math import sqrt
 from random import shuffle
 import pickle
+
+
+class bern_emb_data():
+    def __init__(self, in_file, cs, ns, n_minibatch, L,
+                 emb_type, word2vec_file, glove_file,
+                 fasttext_file, logger
+                 ):
+        assert cs % 2 == 0
+        self.logger = logger
+        self.in_file = in_file
+        self.cs = cs
+        self.ns = ns
+        self.n_minibatch = n_minibatch
+        self.L = L
+        self.word2vec_embedings = None
+        self.glove_embedings = None
+        self.fasttext_embedings = None
+        self.emb_type = emb_type
+        self.embedding_matrix = None
+        words = read_words(in_file)
+        if emb_type:
+            self.logger.debug('....loading embeddings file')
+            self.word2vec_embedings = read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = read_embeddings(glove_file)
+            self.fasttext_embedings = read_embeddings(fasttext_file)
+        self.build_dataset(words)
+        self.batch = self.batch_generator()
+        self.N = len(self.data)
+
+    def build_dataset(self, words):
+        count = [['UNK', -1]]
+        count.extend(collections.Counter(words).most_common(self.L - 1))
+        dictionary = dict()
+        self.counter = dict()
+        for word, _ in count:
+            if self.emb_type:
+                if word == 'UNK' or (word in self.word2vec_embedings.vocab\
+                        and word in self.glove_embedings and word in self.fasttext_embedings):
+                    dictionary[word] = len(dictionary)
+                    self.counter[word] = _
+                else:
+                    print(word + " not in embeds")
+            else:
+                dictionary[word] = len(dictionary)
+        del self.word2vec_embedings
+        del self.glove_embedings
+        del self.fasttext_embedings
+        self.L = len(dictionary)
+        data = list()
+
+        unk_count = 0
+        for word in words:
+            if word in dictionary:
+                index = dictionary[word]
+            else:
+                index = 0
+                unk_count += 1
+            data.append(index)
+        count[0][1] = unk_count
+        reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+        self.data = np.array(data)
+        self.count = count
+        self.dictionary = dictionary
+        self.labels = [reverse_dictionary[x] for x in range(len(reverse_dictionary))]
+        counter_not_unks = self.counter.copy()
+        counter_not_unks.pop('UNK')
+        unigram_dist = np.array([1.0 * counter_not_unks[i] for i in sorted(counter_not_unks, key=counter_not_unks.get, reverse=True)])
+        unigram_dist = (unigram_dist / unigram_dist.sum()) ** (3.0 / 4)
+        self.unigram = unigram_dist / unigram_dist.sum()
+        with open('fits/vocab.tsv', 'w') as txt:
+            for word in self.labels:
+                txt.write(word + '\n')
+
+    def batch_generator(self):
+        batch_size = self.n_minibatch + self.cs
+        data = self.data
+        while True:
+            if data.shape[0] < batch_size:
+                data = np.hstack([data, self.data])
+                if data.shape[0] < batch_size:
+                    continue
+            words = data[:batch_size]
+            data = data[batch_size:]
+            yield words
+
+    def feed(self, placeholder):
+        return {placeholder: self.batch.__next__()}
 
 
 class bayessian_bern_emb_data():
@@ -36,13 +122,13 @@ class bayessian_bern_emb_data():
             self.logger.debug("sentence to repeat:"+fake_sentence)
             fake_sentences = [fake_sentence] * fake_sentences_number
             sentences.extend(fake_sentences)
-        self.logger.debug('....loading embeddings file')
         if emb_type:
-            self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
-            self.glove_embedings = self.read_embeddings(glove_file)
-            self.fasttext_embedings = self.read_embeddings(fasttext_file)
+            self.logger.debug('....loading embeddings file')
+            self.word2vec_embedings = read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = read_embeddings(glove_file)
+            self.fasttext_embedings = read_embeddings(fasttext_file)
             if custom_file:
-                self.custom_embedings = self.read_embeddings(custom_file)
+                self.custom_embedings = read_embeddings(custom_file)
         self.logger.debug('....building corpus')
         self.build_dataset(sentences)
         pickle.dump(self.dictionary, open(dir_name + "/dictionary.dat", "wb+"))
@@ -102,27 +188,6 @@ class bayessian_bern_emb_data():
                 txt.write(word + '\n')
         self.logger.debug('....vocab stored')
 
-    def read_embeddings(self, emb_file):
-        # load  embeddings
-        embeddings_index = {}
-        f = open(emb_file)
-        embeddings_size = 0
-        for line in f:
-            try:
-                values = line.split()
-                if embeddings_size == 0:
-                    embeddings_size = len(values)
-                else:
-                    if embeddings_size == len(values):
-                        word = values[0]
-                        coefs = np.asarray(values[1:], dtype='float64')
-                        embeddings_index[word] = coefs
-            except ValueError as ve:
-                print('error')
-        f.close()
-
-        return embeddings_index
-
     def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
         self.logger = logger
         self.word2vec_embedings = None
@@ -132,11 +197,11 @@ class bayessian_bern_emb_data():
         self.emb_type = emb_type
         self.embedding_matrix = None
         if emb_type:
-            self.word2vec_embedings = self.read_word2vec_embeddings(word2vec_file)
-            self.glove_embedings = self.read_embeddings(glove_file)
-            self.fasttext_embedings = self.read_embeddings(fasttext_file)
+            self.word2vec_embedings = read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = read_embeddings(glove_file)
+            self.fasttext_embedings = read_embeddings(fasttext_file)
             if custom_file:
-                self.custom_embedings = self.read_embeddings(custom_file)
+                self.custom_embedings = read_embeddings(custom_file)
             if self.emb_type == 'word2vec':
                 self.K = self.word2vec_embedings.vector_size
                 # build encoder embedding matrix
@@ -178,10 +243,7 @@ class bayessian_bern_emb_data():
             del(self.fasttext_embedings)
             del(self.custom_embedings)
 
-    def read_word2vec_embeddings(self, emb_file):
-        # load  embeddings
-        word2vec = KeyedVectors.load_word2vec_format(emb_file, binary=True)
-        return word2vec
+
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
