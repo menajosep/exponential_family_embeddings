@@ -164,6 +164,12 @@ class bayessian_bern_emb_data():
         #self.build_sampling_table(self.counter)
         self.dictionary = dictionary
         self.words = [self.reverse_dictionary[x] for x in range(len(self.reverse_dictionary))]
+        counter_not_unks = self.counter.copy()
+        counter_not_unks.pop('UNK')
+        unigram_dist = np.array(
+            [1.0 * counter_not_unks[i] for i in sorted(counter_not_unks, key=counter_not_unks.get, reverse=True)])
+        unigram_dist = (unigram_dist / unigram_dist.sum()) ** (3.0 / 4)
+        self.unigram = unigram_dist / unigram_dist.sum()
         self.logger.debug('....start parallel processing')
         samples = self.parallel_process_text(sentences)
         self.N = len(samples)
@@ -247,7 +253,7 @@ class bayessian_bern_emb_data():
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
-        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs)
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.unigram)
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size, noise):
