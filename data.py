@@ -263,7 +263,7 @@ class bayessian_bern_emb_data():
                 word_index = self.dictionary[word]
                 positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
                 negative_word_sampling_indexes = self.negative_word_sampling_indexes[word_index]
-                if len(positive_word_sampling_indexes) > 0:
+                if len(positive_word_sampling_indexes) > 0 and len(negative_word_sampling_indexes):
                     noise_indexes = []
                     if noise > 0 and word == 'neg':
                         noise_indexes.extend(random.sample(range(0, self.cs), noise))
@@ -285,6 +285,8 @@ class bayessian_bern_emb_data():
                         if neg_random_index not in neg_samples_indexes:
                             neg_samples_indexes.append(neg_random_index)
                             epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
+                else:
+                    self.logger.warn('%s word not trained because lack of training samples.' % word)
         shuffle(epoch_samples)
         target_words, context_words, labels = zip(*epoch_samples)
         labels = np.array(labels)
