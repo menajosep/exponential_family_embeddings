@@ -40,7 +40,7 @@ if len(d.data) % args.mb > 0:
     n_batches += 1
 n_iters = args.n_epochs * n_batches
 
-m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir, optimizer=AdamOptimizer(learning_rate=0.01))
+m.inference.initialize(n_samples=1, n_iter=n_iters, logdir=m.logdir, optimizer=AdamOptimizer(learning_rate=args.lr))
 init = tf.global_variables_initializer()
 sess.run(init)
 n_iters = int(len(d.data)/args.mb)

@@ -42,6 +42,9 @@ def parse_args():
     parser.add_argument('--fasttext_file', type=str, default=None,
                         help='fasttext previously trained embeddings')
 
+    parser.add_argument('--lr', type=float, default=0.01,
+                        help='Learning rate. Omitted if clr is used. Default is 0.01.')
+
     args = parser.parse_args()
     dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
 
