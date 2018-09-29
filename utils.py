@@ -78,7 +78,7 @@ def flatten_list(listoflists):
     return list(chain.from_iterable(listoflists))
 
 
-def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int, unigram:list):
+def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size:int):
     """Generate a function that will clean and tokenize text."""
     def process_sentences(sentences):
         samples = []
@@ -94,7 +94,6 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                         if word in dictionary_keys and word != 'UNK':
                             word_context_size = 2 * (int(random.uniform(1, int(context_size / 2)+1)))
                             target_word_index = dictionary[word]
-                            target_neg_word_indexes = np.random.multinomial(neg_samples, unigram).nonzero()[0] + 1
                             local_context_words_indexes = [i for i in range(index - int(word_context_size / 2),
                                                                             index + int(word_context_size / 2) + 1)]
                             local_context_words_indexes.remove(index)
@@ -108,9 +107,9 @@ def process_sentences_constructor(neg_samples:int, dictionary:dict, context_size
                                     else:
                                         context_word_index = dictionary['UNK']
                                     samples.append((target_word_index, context_word_index, 1))
-                                    # prepare negative samples
-                                    for target_neg_word_index in target_neg_word_indexes:
-                                        samples.append((target_neg_word_index, context_word_index, 0))
+                            for i in range(neg_samples):
+                                random_neg_sample = random.randint(0, len(dictionary) - 1)
+                                samples.append((target_word_index, random_neg_sample, 0))
                         index += 1
         except Exception as e:
             print('error '+e)

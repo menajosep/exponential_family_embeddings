@@ -29,7 +29,7 @@ class bern_emb_data():
             self.glove_embedings = read_embeddings(glove_file)
             self.fasttext_embedings = read_embeddings(fasttext_file)
         self.build_dataset(words)
-        self.batch = self.batch_generator()
+        #self.batch = self.batch_generator()
         self.N = len(self.data)
 
     def build_dataset(self, words):
@@ -88,8 +88,69 @@ class bern_emb_data():
             data = data[batch_size:]
             yield words
 
-    def feed(self, placeholder):
-        return {placeholder: self.batch.__next__()}
+    def feed(self, placeholder, ones_placeholder, zeros_placeholder):
+        return {placeholder: self.batch.__next__(),
+                ones_placeholder: np.ones(self.n_minibatch, dtype=np.int32),
+                zeros_placeholder: [[0] * self.ns] * self.n_minibatch
+                }
+
+    def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, logger):
+        self.logger = logger
+        self.word2vec_embedings = None
+        self.glove_embedings = None
+        self.fasttext_embedings = None
+        self.emb_type = emb_type
+        self.embedding_matrix = None
+        if emb_type:
+            self.word2vec_embedings = read_word2vec_embeddings(word2vec_file)
+            self.glove_embedings = read_embeddings(glove_file)
+            self.fasttext_embedings = read_embeddings(fasttext_file)
+            if self.emb_type == 'word2vec':
+                self.K = self.word2vec_embedings.vector_size
+                # build encoder embedding matrix
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in self.dictionary.items():
+                    embedding_index = self.word2vec_embedings.vocab[word].index
+                    embedding_vector = self.word2vec_embedings.vectors[embedding_index]
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        self.logger.debug('%s word out of the vocab.' % word)
+                self.embedding_matrix = embedding_matrix
+            else:
+                if self.emb_type == 'glove':
+                    embeddings = self.glove_embedings
+                elif self.emb_type == 'fasttext':
+                    embeddings = self.fasttext_embedings
+                self.K = len(list(embeddings.values())[0])
+                self.logger.debug("build encoder embedding matrix")
+                embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
+                not_found = 0
+                for word, index in self.dictionary.items():
+                    embedding_vector = embeddings.get(word)
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        embedding_matrix[index] = embedding_vector
+                    else:
+                        not_found += 1
+                        self.logger.debug('%s word out of the vocab.' % word)
+                del(embeddings)
+                self.embedding_matrix = embedding_matrix
+            del(self.word2vec_embedings)
+            del(self.glove_embedings)
+            del(self.fasttext_embedings)
+
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['logger']
+        return state
 
 
 class bayessian_bern_emb_data():
@@ -164,12 +225,6 @@ class bayessian_bern_emb_data():
         #self.build_sampling_table(self.counter)
         self.dictionary = dictionary
         self.words = [self.reverse_dictionary[x] for x in range(len(self.reverse_dictionary))]
-        counter_not_unks = self.counter.copy()
-        counter_not_unks.pop('UNK')
-        unigram_dist = np.array(
-            [1.0 * counter_not_unks[i] for i in sorted(counter_not_unks, key=counter_not_unks.get, reverse=True)])
-        unigram_dist = (unigram_dist / unigram_dist.sum()) ** (3.0 / 4)
-        self.unigram = unigram_dist / unigram_dist.sum()
         self.logger.debug('....start parallel processing')
         samples = self.parallel_process_text(sentences)
         self.N = len(samples)
@@ -253,7 +308,7 @@ class bayessian_bern_emb_data():
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
-        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs, self.unigram)
+        process_text = process_sentences_constructor(self.ns, self.dictionary, self.cs)
         return flatten_list(apply_parallel(process_text, data))
 
     def batch_generator(self, batch_size, noise):
@@ -263,7 +318,7 @@ class bayessian_bern_emb_data():
                 word_index = self.dictionary[word]
                 positive_word_sampling_indexes = self.positive_word_sampling_indexes[word_index]
                 negative_word_sampling_indexes = self.negative_word_sampling_indexes[word_index]
-                if len(positive_word_sampling_indexes) > 0 and len(negative_word_sampling_indexes):
+                if len(positive_word_sampling_indexes) > 0:
                     noise_indexes = []
                     if noise > 0 and word == 'neg':
                         noise_indexes.extend(random.sample(range(0, self.cs), noise))
@@ -285,8 +340,6 @@ class bayessian_bern_emb_data():
                         if neg_random_index not in neg_samples_indexes:
                             neg_samples_indexes.append(neg_random_index)
                             epoch_samples.append((word_index, negative_word_sampling_indexes[neg_random_index], 0))
-                else:
-                    self.logger.warn('%s word not trained because lack of training samples.' % word)
         shuffle(epoch_samples)
         target_words, context_words, labels = zip(*epoch_samples)
         labels = np.array(labels)

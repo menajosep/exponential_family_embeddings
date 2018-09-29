@@ -4,6 +4,7 @@ import pickle
 import tensorflow as tf
 
 from tensorflow.contrib.distributions import Normal, Bernoulli
+import edward as ed
 from tensorflow.contrib.tensorboard.plugins import projector
 from sklearn.manifold import TSNE
 from utils import *
@@ -116,3 +117,92 @@ class bern_emb_model():
             tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
             low_dim_embs_rho2 = tsne.fit_transform(self.rho.eval()[:plot_only])
             plot_with_labels(low_dim_embs_rho2[:plot_only], labels[:plot_only], dir_name + '/rho.eps')
+
+
+class bern_emb_model_vi(bern_emb_model):
+    def __init__(self, d, sig, sess, logdir):
+        self.sig = sig
+        self.sess = sess
+        self.logdir = logdir
+
+        with tf.name_scope('model'):
+            # Data Placeholder
+            with tf.name_scope('input'):
+                self.placeholders = tf.placeholder(tf.int32)
+                self.ones_placeholder = tf.placeholder(tf.int32)
+                self.zeros_placeholder = tf.placeholder(tf.int32)
+                self.words = self.placeholders
+
+            # Index Masks
+            with tf.name_scope('context_mask'):
+                self.p_mask = tf.cast(tf.range(d.cs / 2, d.n_minibatch + int(d.cs / 2)), tf.int32)
+                rows = tf.cast(tf.tile(tf.expand_dims(tf.range(0, int(d.cs / 2)), [0]), [d.n_minibatch, 1]), tf.int32)
+                columns = tf.cast(tf.tile(tf.expand_dims(tf.range(0, d.n_minibatch), [1]), [1, int(d.cs / 2)]), tf.int32)
+                self.ctx_mask = tf.concat([rows + columns, rows + columns + int(d.cs / 2) + 1], 1)
+
+            with tf.name_scope('embeddings'):
+                # Embedding vectors
+                self.rho = ed.models.Normal(loc=tf.zeros((d.L, d.K), dtype=tf.float32),
+                                scale=tf.ones((d.L, d.K), dtype=tf.float32))
+
+                # Context vectors
+                self.alpha = ed.models.Normal(loc=tf.zeros((d.L, d.K), dtype=tf.float32),
+                                scale=tf.ones((d.L, d.K), dtype=tf.float32))
+
+            with tf.name_scope('natural_param'):
+                # Taget and Context Indices
+                with tf.name_scope('target_word'):
+                    self.p_idx = tf.gather(self.words, self.p_mask)
+                    self.p_rho = tf.nn.embedding_lookup(self.rho, self.p_idx)
+
+                # Negative samples
+                with tf.name_scope('negative_samples'):
+                    unigram_logits = tf.tile(tf.expand_dims(tf.log(tf.constant(d.unigram)), [0]), [d.n_minibatch, 1])
+                    self.n_idx = tf.multinomial(unigram_logits, d.ns)
+                    self.n_rho = tf.nn.embedding_lookup(self.rho, self.n_idx)
+
+                with tf.name_scope('context'):
+                    self.ctx_idx = tf.squeeze(tf.gather(self.words, self.ctx_mask))
+                    self.ctx_alphas = tf.nn.embedding_lookup(self.alpha, self.ctx_idx)
+
+                # Natural parameter
+                ctx_sum = tf.reduce_sum(self.ctx_alphas, [1])
+                self.p_eta = tf.expand_dims(tf.reduce_sum(tf.multiply(self.p_rho, ctx_sum), -1), 1)
+                self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, tf.tile(tf.expand_dims(ctx_sum, 1), [1, d.ns, 1])),
+                                           -1)
+
+            # Conditional likelihood
+            self.y_pos = ed.models.Bernoulli(logits=self.p_eta)
+            self.y_neg = ed.models.Bernoulli(logits=self.n_eta)
+
+            # INFERENCE
+            sigma_init_array = np.full((d.L, 1), 2, dtype=np.float32)
+            self.sigrho = tf.nn.softplus(
+                tf.matmul(tf.get_variable("sigrho", initializer=sigma_init_array), tf.ones([1, d.K])),
+                name="sigmasrho")
+            self.sigalpha = tf.nn.softplus(
+                tf.matmul(tf.get_variable("sigalpha", initializer=sigma_init_array), tf.ones([1, d.K])),
+                name="sigmasalpha")
+            # self.locV = tf.get_variable("qV/loc", [d.L, self.K], initializer=tf.zeros_initializer())
+
+            self.qrho = ed.models.Normal(loc=d.embedding_matrix, scale=self.sigrho)
+            self.qalpha = ed.models.Normal(loc=d.embedding_matrix, scale=self.sigalpha)
+
+            self.inference = ed.KLqp({self.rho: self.qrho, self.alpha: self.qalpha},
+                                     data={self.y_pos: self.ones_placeholder,
+                                           self.y_neg: self.zeros_placeholder
+                                           })
+            with self.sess.as_default():
+                tf.global_variables_initializer().run()
+            self.summaries = tf.summary.merge_all()
+            self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
+            self.saver = tf.train.Saver()
+            config = projector.ProjectorConfig()
+
+            alpha_config = config.embeddings.add()
+            alpha_config.tensor_name = 'qalpha/loc'
+            alpha_config.metadata_path = '../vocab.tsv'
+            rho_config = config.embeddings.add()
+            rho_config.tensor_name = 'qrho/loc'
+            rho_config.metadata_path = '../vocab.tsv'
+            projector.visualize_embeddings(self.train_writer, config)
