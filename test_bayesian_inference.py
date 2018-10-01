@@ -66,5 +66,6 @@ for word in d.dictionary:
             })
         pos_probs[word] = pos
         neg_probs[word] = neg
-
+pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
+pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
 logger.debug('Done')
