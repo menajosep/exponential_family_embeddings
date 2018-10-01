@@ -142,3 +142,33 @@ def parse_args_bayesian():
         dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
 
         return args, dir_name
+
+
+def parse_args_bayesian_test():
+    parser = argparse.ArgumentParser(description="run exponential family embeddings on text")
+
+    parser.add_argument('--in_file', type=str, default=None,
+                        help='input file')
+
+    parser.add_argument('--shuffle', type=str, default=None,
+                        help='to shufffle embeddings or not')
+
+    parser.add_argument('--sigmas', type=str, default=None,
+                        help='path to files with sigmas')
+
+    parser.add_argument('--emb_type', type=str, default=None,
+                        help='type of previously trained embeddings')
+
+    parser.add_argument('--word2vec_file', type=str, default=None,
+                        help='word2vec previously trained embeddings')
+
+    parser.add_argument('--glove_file', type=str, default=None,
+                        help='glove previously trained embeddings')
+
+    parser.add_argument('--fasttext_file', type=str, default=None,
+                        help='fasttext previously trained embeddings')
+
+    args = parser.parse_args()
+    dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
+
+    return args, dir_name
