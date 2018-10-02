@@ -61,13 +61,11 @@ if __name__ == "__main__":
     logger.debug('Load embeddings')
     d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                       args.fasttext_file, None, logger)
-    logger.debug('Shuffle:'+args.shuffle)
     if args.shuffle:
         aux_embs = d.embedding_matrix.copy()
         shuffle(aux_embs)
         d.embedding_matrix = aux_embs
 
-    logger.debug('Sigmas:'+args.sigmas)
     sigmas = None
     if args.sigmas:
         sigmas_array = pickle.load(open(args.sigmas, "rb+"))
