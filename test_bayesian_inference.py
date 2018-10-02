@@ -6,26 +6,9 @@ from __future__ import print_function
 from args import *
 from data import *
 from bayesian_models import *
+import multiprocessing
 
-logger = get_logger()
 
-args, dir_name = parse_args_bayesian_test()
-os.makedirs(dir_name)
-sess = ed.get_session()
-
-d = pickle.load(open(args.in_file, "rb+"))
-d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
-                  args.fasttext_file, None, logger)
-
-if args.shuffle:
-    aux_embs = d.embedding_matrix.copy()
-    shuffle(aux_embs)
-    d.embedding_matrix = aux_embs
-
-sigmas = None
-if args.sigmas:
-    sigmas_array = pickle.load(open(args.sigmas, "rb+"))
-    sigmas = sigmas_array[-1]
 
 def batch_generator(word, d):
     word_samples = []
@@ -44,11 +27,10 @@ def batch_generator(word, d):
     return word_target, word_context, labels
 
 
-pos_probs = dict()
-neg_probs = dict()
-for word in d.dictionary:
+def run_tensorflow(word):
     if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
             d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
+        sess = ed.get_session()
         target_words, context_words, labels = batch_generator(word, d)
         # MODEL
         logger.debug('....build model')
@@ -66,6 +48,41 @@ for word in d.dictionary:
             })
         pos_probs[word] = pos
         neg_probs[word] = neg
-pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
-pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
-logger.debug('Done')
+
+
+if __name__ == "__main__":
+    logger = get_logger()
+    manager = multiprocessing.Manager()
+
+    args, dir_name = parse_args_bayesian_test()
+    os.makedirs(dir_name)
+    logger.debug('Load data')
+    d = pickle.load(open(args.in_file, "rb+"))
+    logger.debug('Load embeddings')
+    d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
+                      args.fasttext_file, None, logger)
+    logger.debug('Shuffle:'+args.shuffle)
+    if args.shuffle:
+        aux_embs = d.embedding_matrix.copy()
+        shuffle(aux_embs)
+        d.embedding_matrix = aux_embs
+
+    logger.debug('Sigmas:'+args.sigmas)
+    sigmas = None
+    if args.sigmas:
+        sigmas_array = pickle.load(open(args.sigmas, "rb+"))
+        sigmas = sigmas_array[-1]
+
+    pos_probs = manager.dict()
+    neg_probs = manager.dict()
+    for word in d.dictionary:
+        logger.debug('predicting '+word)
+        # option 1: execute code with extra process
+        p = multiprocessing.Process(target=run_tensorflow, args=[word])
+        p.start()
+        p.join()
+    logger.debug('Store data')
+    pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
+    pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
+
+    logger.debug('Done')
