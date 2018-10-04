@@ -6,15 +6,17 @@ from args import *
 from data import *
 from bayesian_models import *
 
+MAX_SAMPLES_PER_WORD = 10000
+
 
 def batch_generator(word, d):
     word_samples = []
     word_index = d.dictionary[word]
     positive_word_sampling_indexes = d.positive_word_sampling_indexes[word_index]
     negative_word_sampling_indexes = d.negative_word_sampling_indexes[word_index]
-    for positive_word_sampling_index in positive_word_sampling_indexes:
+    for positive_word_sampling_index in positive_word_sampling_indexes[:MAX_SAMPLES_PER_WORD]:
         word_samples.append((word_index, positive_word_sampling_index, 1))
-    for negative_word_sampling_index in negative_word_sampling_indexes:
+    for negative_word_sampling_index in negative_word_sampling_indexes[:MAX_SAMPLES_PER_WORD]:
         word_samples.append((word_index, negative_word_sampling_index, 0))
     shuffle(word_samples)
     target_words, context_words, labels = zip(*word_samples)
