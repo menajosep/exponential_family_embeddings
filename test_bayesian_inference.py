@@ -81,7 +81,7 @@ if __name__ == "__main__":
         p = multiprocessing.Process(target=run_tensorflow, args=[word])
         p.start()
         processes.append(p)
-        if len(processes) == 7:
+        if len(processes) == cpu:
             for process in processes:
                 process.join()
             processes = []
