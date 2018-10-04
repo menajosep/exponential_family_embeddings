@@ -2,12 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 from args import *
 from data import *
 from bayesian_models import *
-import multiprocessing
-
 
 
 def batch_generator(word, d):
@@ -27,32 +24,25 @@ def batch_generator(word, d):
     return word_target, word_context, labels
 
 
-def run_tensorflow(word):
+def run_tensorflow(word, d):
     if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
             d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
-        sess = ed.get_session()
-        target_words, context_words, labels = batch_generator(word, d)
-        # MODEL
-        logger.debug('....build model')
-        m = bayesian_emb_inference_model(d, sess, dir_name, len(labels), sigmas)
-
-        # INFERENCE
-        init = tf.global_variables_initializer()
-        sess.run(init)
         logger.debug('....starting predicting')
+        target_words, context_words, labels = batch_generator(word, d)
 
         pos, neg = sess.run([m.prob_pos, m.prob_neg], {
-                m.target_placeholder: target_words,
-                m.context_placeholder: context_words,
-                m.labels_placeholder: labels
-            })
-        pos_probs[word] = pos
-        neg_probs[word] = neg
+            m.target_placeholder: target_words,
+            m.context_placeholder: context_words,
+            m.labels_placeholder: labels,
+            m.batch_size: len(labels)
+        })
+        return pos, neg
+    else:
+        return -1, -1
 
 
 if __name__ == "__main__":
     logger = get_logger()
-    manager = multiprocessing.Manager()
 
     args, dir_name = parse_args_bayesian_test()
     os.makedirs(dir_name)
@@ -71,22 +61,24 @@ if __name__ == "__main__":
         sigmas_array = pickle.load(open(args.sigmas, "rb+"))
         sigmas = sigmas_array[-1]
 
-    pos_probs = manager.dict()
-    neg_probs = manager.dict()
-    cpu = args.parallel
-    processes = list()
-    for word in d.dictionary:
-        logger.debug('predicting '+word)
-        # option 1: execute code with extra process
-        p = multiprocessing.Process(target=run_tensorflow, args=[word])
-        p.start()
-        processes.append(p)
-        if len(processes) == cpu:
-            for process in processes:
-                process.join()
-            processes = []
+    pos_probs = dict()
+    neg_probs = dict()
+    sess = ed.get_session()
+
+    # MODEL
+    logger.debug('....build model')
+    m = bayesian_emb_inference_model(d, sess, dir_name, sigmas)
+
+    # INFERENCE
+    init = tf.global_variables_initializer()
+    sess.run(init)
+    for word in sorted(d.dictionary):
+        logger.debug('predicting ' + word)
+        pos, neg = run_tensorflow(word, d)
+        pos_probs[word] = pos
+        neg_probs[word] = neg
     logger.debug('Store data')
-    pickle.dump(dict(pos_probs), open(dir_name + "/pos_probs.dat", "wb+"))
-    pickle.dump(dict(pos_probs), open(dir_name + "/neg_probs.dat", "wb+"))
+    pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
+    pickle.dump(pos_probs, open(dir_name + "/neg_probs.dat", "wb+"))
 
     logger.debug('Done')

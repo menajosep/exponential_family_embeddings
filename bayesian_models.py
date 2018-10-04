@@ -108,7 +108,7 @@ class bayesian_emb_model():
         return labels
 
 class bayesian_emb_inference_model():
-    def __init__(self, d, sess, logdir, n_minibatch, sigmas = None):
+    def __init__(self, d, sess, logdir, sigmas = None):
         self.K = d.K
         self.sess = sess
         self.logdir = logdir
@@ -118,7 +118,8 @@ class bayesian_emb_inference_model():
             with tf.name_scope('input'):
                 self.target_placeholder = tf.placeholder(tf.int32)
                 self.context_placeholder = tf.placeholder(tf.int32)
-                self.labels_placeholder = tf.placeholder(tf.int32, shape=[n_minibatch])
+                self.labels_placeholder = tf.placeholder(tf.int32)
+                self.batch_size = tf.placeholder(tf.int32)
 
             # Index Masks
             with tf.name_scope('priors'):
@@ -136,7 +137,7 @@ class bayesian_emb_inference_model():
             # Taget and Context Indices
             with tf.name_scope('target_word'):
                 pos_indexes = tf.where(
-                    tf.equal(self.labels_placeholder, tf.ones(self.labels_placeholder.shape, dtype=tf.int32)))
+                    tf.equal(self.labels_placeholder, tf.ones(self.batch_size, dtype=tf.int32)))
                 pos_words = tf.gather(self.target_placeholder, pos_indexes)
                 self.p_rhos = tf.nn.embedding_lookup(self.U, pos_words)
                 pos_contexts = tf.gather(self.context_placeholder, pos_indexes)
@@ -144,7 +145,7 @@ class bayesian_emb_inference_model():
 
             with tf.name_scope('negative_samples'):
                 neg_indexes = tf.where(
-                    tf.equal(self.labels_placeholder, tf.zeros(self.labels_placeholder.shape, dtype=tf.int32)))
+                    tf.equal(self.labels_placeholder, tf.zeros(self.batch_size, dtype=tf.int32)))
                 neg_words = tf.gather(self.target_placeholder, neg_indexes)
                 self.n_rho = tf.nn.embedding_lookup(self.U, neg_words)
                 neg_contexts = tf.gather(self.context_placeholder, neg_indexes)
