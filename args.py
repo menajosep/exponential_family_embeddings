@@ -168,6 +168,10 @@ def parse_args_bayesian_test():
     parser.add_argument('--fasttext_file', type=str, default=None,
                         help='fasttext previously trained embeddings')
 
+    parser.add_argument('--parallel', type=int, default=1,
+                        help='Number of concurrent jobs',
+                        required=False)
+
     args = parser.parse_args()
     dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
 

@@ -73,14 +73,20 @@ if __name__ == "__main__":
 
     pos_probs = manager.dict()
     neg_probs = manager.dict()
+    cpu = args.parallel
+    processes = list()
     for word in d.dictionary:
         logger.debug('predicting '+word)
         # option 1: execute code with extra process
         p = multiprocessing.Process(target=run_tensorflow, args=[word])
         p.start()
-        p.join()
+        processes.append(p)
+        if len(processes) == 7:
+            for process in processes:
+                process.join()
+            processes = []
     logger.debug('Store data')
-    pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
-    pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
+    pickle.dump(dict(pos_probs), open(dir_name + "/pos_probs.dat", "wb+"))
+    pickle.dump(dict(pos_probs), open(dir_name + "/neg_probs.dat", "wb+"))
 
     logger.debug('Done')
