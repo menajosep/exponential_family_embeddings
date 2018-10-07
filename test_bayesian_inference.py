@@ -55,7 +55,7 @@ if __name__ == "__main__":
                       args.fasttext_file, None, logger)
     if args.shuffle:
         aux_embs = d.embedding_matrix.copy()
-        shuffle(aux_embs)
+        np.random.shuffle(aux_embs)
         d.embedding_matrix = aux_embs
 
     sigmas = None
