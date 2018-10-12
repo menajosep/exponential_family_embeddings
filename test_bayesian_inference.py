@@ -76,11 +76,28 @@ if __name__ == "__main__":
     sess.run(init)
     for word in sorted(d.dictionary):
         logger.debug('predicting ' + word)
-        pos, neg = run_tensorflow(word, d)
-        pos_probs[word] = pos
-        neg_probs[word] = neg
+        local_pos_probs = []
+        local_neg_probs = []
+        for i in range(args.n_samples):
+            pos, neg = run_tensorflow(word, d)
+            local_pos_probs.append(pos)
+            local_neg_probs.append(neg)
+        local_pos_probs = np.array(local_pos_probs)
+        local_neg_probs = np.array(local_neg_probs)
+        pos_probs[word] = {
+            "max" : local_pos_probs.max(),
+            "min": local_pos_probs.min(),
+            "loc": local_pos_probs.mean(),
+            "std": local_pos_probs.std(),
+        }
+        neg_probs[word] = {
+            "max": local_neg_probs.max(),
+            "min": local_neg_probs.min(),
+            "loc": local_neg_probs.mean(),
+            "std": local_neg_probs.std(),
+        }
     logger.debug('Store data')
     pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
-    pickle.dump(pos_probs, open(dir_name + "/neg_probs.dat", "wb+"))
+    pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
 
     logger.debug('Done')
