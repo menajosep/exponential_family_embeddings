@@ -1,8 +1,12 @@
-import json
 import mmap
+import re
+import string
+from typing import List
 
 from textacy import preprocess_text
 from tqdm import tqdm
+
+from utils import apply_parallel, flatten_list
 
 
 def get_num_lines(file_path):
@@ -14,33 +18,61 @@ def get_num_lines(file_path):
     return lines
 
 
-filename = '/Users/jose.mena/dev/personal/data/wiki/enwik9_multiline_raw.txt'
-data = list()
-
-
 def get_text(text):
     try:
         processed_text = preprocess_text(text,
-                               fix_unicode=True,
-                               lowercase=True,
-                               transliterate=True,
-                               no_urls=True,
-                               no_emails=True,
-                               no_phone_numbers=True,
-                               no_numbers=True,
-                               no_currency_symbols=True,
-                               no_punct=True,
-                               no_contractions=False,
-                               no_accents=True)
+                                         fix_unicode=True,
+                                         lowercase=True,
+                                         transliterate=True,
+                                         no_urls=True,
+                                         no_emails=True,
+                                         no_phone_numbers=True,
+                                         no_numbers=True,
+                                         no_currency_symbols=True,
+                                         no_punct=False,
+                                         no_contractions=False,
+                                         no_accents=True)
+
+        degrees_pattern = r"\d+deg[f]*"
+        processed_text = re.sub(degrees_pattern, "degrees", processed_text)
+        remove = string.punctuation
+        remove = remove.replace("-", "")
+        remove = remove.replace("/", "")
+        pattern = r"[{}]".format(remove)
+        processed_text = re.sub(pattern, "", processed_text)
     except:
         print("wrong text:"+text)
         processed_text = ""
     return processed_text
 
 
+def process_sentences_constructor():
+    """Generate a function that will clean and tokenize text."""
+    def process_sentences(lines):
+        data = []
+        try:
+            for line in lines:
+                data.append(get_text(line))
+        except Exception as e:
+            print('error '+e)
+        return data
+
+    return process_sentences
+
+
+def parallel_process_text(data: List[str]) -> List[List[str]]:
+    """Apply cleaner -> tokenizer."""
+    process_text = process_sentences_constructor()
+    return flatten_list(apply_parallel(process_text, data))
+
+
+filename = '/Users/jose.mena/dev/personal/data/wiki/enwik9_multiline_raw.txt'
+data = list()
+lines = []
 with open(filename) as f:
     for line in tqdm(f, total=get_num_lines(filename)):
-        data.append(get_text(line))
+        lines.append(line)
+data = parallel_process_text(lines)
 dest_filename = '/Users/jose.mena/dev/personal/data/wiki/wiki_multiline.txt'
 with open(dest_filename, 'w') as f:
     for text in data:

@@ -251,40 +251,33 @@ class bayessian_bern_emb_data():
 
     def load_embeddings(self, emb_type, word2vec_file, glove_file, fasttext_file, custom_file, logger):
         self.logger = logger
-        self.word2vec_embedings = None
-        self.glove_embedings = None
-        self.fasttext_embedings = None
-        self.custom_embedings = None
         self.emb_type = emb_type
         self.embedding_matrix = None
         if emb_type:
-            self.word2vec_embedings = read_word2vec_embeddings(word2vec_file)
-            self.glove_embedings = read_embeddings(glove_file)
-            self.fasttext_embedings = read_embeddings(fasttext_file)
-            if custom_file:
-                self.custom_embedings = read_embeddings(custom_file)
             if self.emb_type == 'word2vec':
-                self.K = self.word2vec_embedings.vector_size
+                embeddings = read_word2vec_embeddings(word2vec_file)
+                self.K = embeddings.vector_size
                 # build encoder embedding matrix
                 embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
                 not_found = 0
                 for word, index in self.dictionary.items():
-                    embedding_index = self.word2vec_embedings.vocab[word].index
-                    embedding_vector = self.word2vec_embedings.vectors[embedding_index]
+                    embedding_index = embeddings.vocab[word].index
+                    embedding_vector = embeddings.vectors[embedding_index]
                     if embedding_vector is not None:
                         # words not found in embedding index will be all-zeros.
                         embedding_matrix[index] = embedding_vector
                     else:
                         not_found += 1
                         self.logger.debug('%s word out of the vocab.' % word)
+                del (embeddings)
                 self.embedding_matrix = embedding_matrix
             else:
                 if self.emb_type == 'glove':
-                    embeddings = self.glove_embedings
+                    embeddings = read_embeddings(glove_file)
                 elif self.emb_type == 'fasttext':
-                    embeddings = self.fasttext_embedings
+                    embeddings = read_embeddings(fasttext_file)
                 else:
-                    embeddings = self.custom_embedings
+                    embeddings = read_embeddings(custom_file)
                 self.K = len(list(embeddings.values())[0])
                 self.logger.debug("build encoder embedding matrix")
                 embedding_matrix = np.zeros((self.L, self.K), dtype=np.float32)
@@ -299,12 +292,6 @@ class bayessian_bern_emb_data():
                         self.logger.debug('%s word out of the vocab.' % word)
                 del(embeddings)
                 self.embedding_matrix = embedding_matrix
-            del(self.word2vec_embedings)
-            del(self.glove_embedings)
-            del(self.fasttext_embedings)
-            del(self.custom_embedings)
-
-
 
     def parallel_process_text(self, data: List[str]) -> List[List[str]]:
         """Apply cleaner -> tokenizer."""
