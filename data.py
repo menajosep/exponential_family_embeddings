@@ -154,6 +154,8 @@ class bern_emb_data():
 
 
 class bayessian_bern_emb_data():
+    MAX_SAMPLES = 10000
+
     def __init__(self, input_file, cs, ns, n_minibatch, L, K,
                  emb_type, word2vec_file, glove_file,
                  fasttext_file, custom_file,
@@ -234,10 +236,11 @@ class bayessian_bern_emb_data():
             self.positive_word_sampling_indexes[key] = []
             self.negative_word_sampling_indexes[key] = []
         for i in range(len(samples)):
-            if samples[i][2] == 1:
-                self.positive_word_sampling_indexes[samples[i][0]].append(samples[i][1])
-            else:
-                self.negative_word_sampling_indexes[samples[i][0]].append(samples[i][1])
+            if len(self.positive_word_sampling_indexes[samples[i][0]]) < self.MAX_SAMPLES:
+                if samples[i][2] == 1:
+                    self.positive_word_sampling_indexes[samples[i][0]].append(samples[i][1])
+                else:
+                    self.negative_word_sampling_indexes[samples[i][0]].append(samples[i][1])
         del(samples)
 
         #shuffle(samples)
