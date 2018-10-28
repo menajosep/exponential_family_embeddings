@@ -176,3 +176,17 @@ def parse_args_bayesian_test():
     dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
 
     return args, dir_name
+
+
+def parse_args_word2vec2text():
+    parser = argparse.ArgumentParser(description="run conversor of word2vec model to text")
+
+    parser.add_argument('--out_file', type=str, default=None,
+                        help='output file')
+
+    parser.add_argument('--word2vec_file', type=str, default=None,
+                        help='word2vec previously trained embeddings')
+
+    args = parser.parse_args()
+
+    return args
