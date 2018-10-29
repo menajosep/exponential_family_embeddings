@@ -42,6 +42,12 @@ def run_tensorflow(word, d):
     else:
         return -1, -1
 
+def get_perplexity(probs):
+    probs = np.array(probs)
+    norm_probs = probs / np.sum(probs)
+    perplexity = np.exp(np.negative(np.sum(norm_probs * np.log(norm_probs))))
+    return perplexity
+
 
 if __name__ == "__main__":
     logger = get_logger()
@@ -63,8 +69,8 @@ if __name__ == "__main__":
         sigmas_array = pickle.load(open(args.sigmas, "rb+"))
         sigmas = sigmas_array[-1]
 
-    pos_probs = dict()
-    neg_probs = dict()
+    pos_perplexities = dict()
+    neg_perplexities = dict()
     sess = ed.get_session()
 
     # MODEL
@@ -76,28 +82,34 @@ if __name__ == "__main__":
     sess.run(init)
     for word in sorted(d.dictionary):
         logger.debug('predicting ' + word)
-        local_pos_probs = []
-        local_neg_probs = []
+        local_pos_perplexity = []
+        local_neg_perplexity = []
         for i in range(args.n_samples):
             pos, neg = run_tensorflow(word, d)
-            local_pos_probs.append(pos)
-            local_neg_probs.append(neg)
-        local_pos_probs = np.array(local_pos_probs)
-        local_neg_probs = np.array(local_neg_probs)
-        pos_probs[word] = {
-            "max" : local_pos_probs.max(),
-            "min": local_pos_probs.min(),
-            "loc": local_pos_probs.mean(),
-            "std": local_pos_probs.std(),
+            if np.isscalar(pos):
+                local_pos_perplexity.append(pos)
+            else:
+                local_pos_perplexity.append(get_perplexity(pos[:, 0]))
+            if np.isscalar(neg):
+                local_neg_perplexity.append(-1)
+            else:
+                local_neg_perplexity.append(get_perplexity(neg[:, 0]))
+        local_pos_perplexity = np.array(local_pos_perplexity)
+        local_neg_perplexity = np.array(local_neg_perplexity)
+        pos_perplexities[word] = {
+            "max" : local_pos_perplexity.max(),
+            "min": local_pos_perplexity.min(),
+            "loc": local_pos_perplexity.mean(),
+            "std": local_pos_perplexity.std(),
         }
-        neg_probs[word] = {
-            "max": local_neg_probs.max(),
-            "min": local_neg_probs.min(),
-            "loc": local_neg_probs.mean(),
-            "std": local_neg_probs.std(),
+        neg_perplexities[word] = {
+            "max": local_neg_perplexity.max(),
+            "min": local_neg_perplexity.min(),
+            "loc": local_neg_perplexity.mean(),
+            "std": local_neg_perplexity.std(),
         }
     logger.debug('Store data')
-    pickle.dump(pos_probs, open(dir_name + "/pos_probs.dat", "wb+"))
-    pickle.dump(neg_probs, open(dir_name + "/neg_probs.dat", "wb+"))
+    pickle.dump(pos_perplexities, open(dir_name + "/pos_perplexities.dat", "wb+"))
+    pickle.dump(neg_perplexities, open(dir_name + "/neg_perplexities.dat", "wb+"))
 
     logger.debug('Done')

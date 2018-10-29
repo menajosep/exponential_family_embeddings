@@ -158,8 +158,10 @@ class bayesian_emb_inference_model():
         self.y_pos = Bernoulli(logits=self.p_eta)
         self.y_neg = Bernoulli(logits=self.n_eta)
 
-        self.prob_pos = tf.reduce_mean(self.y_pos.prob(1.0))
-        self.prob_neg = tf.reduce_mean(self.y_neg.prob(0.0))
+        #self.prob_pos = tf.reduce_mean(self.y_pos.prob(1.0))
+        #self.prob_neg = tf.reduce_mean(self.y_neg.prob(0.0))
+        self.prob_pos = self.y_pos.prob(1.0)
+        self.prob_neg = self.y_neg.prob(0.0)
 
         with self.sess.as_default():
             tf.global_variables_initializer().run()
