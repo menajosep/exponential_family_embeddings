@@ -29,17 +29,19 @@ def batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos
     labels = np.array(labels)
     word_target = np.array(target_words, dtype="int32")
     word_context = np.array(context_words, dtype="int32")
-    return word_target, word_context, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs
+    return word_target, word_context, labels, np.array(pos_empiric_probs), \
+           np.array(neg_empiric_probs), np.array(pos_ctxt_probs), np.array(neg_ctxt_probs)
 
 
-def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs):
+def run_tensorflow(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict):
     if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
             d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
         logger.debug('....starting predicting')
         target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs = \
-            batch_generator(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs)
+            batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict)
 
-        perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
+        #perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
+        perplexity_pos, perplexity_neg = sess.run([m.mul_prob_pos], {
             m.target_placeholder: target_words,
             m.context_placeholder: context_words,
             m.labels_placeholder: labels,
@@ -84,9 +86,9 @@ if __name__ == "__main__":
     logger.debug('Load data')
     d = pickle.load(open(args.in_file, "rb+"))
     logger.debug('get pos probs')
-    pos_empiric_probs, pos_context_probs = get_empiric_probs(d.positive_word_sampling_indexes)
+    pos_empiric_probs_dict, pos_context_probs_dict = get_empiric_probs(d.positive_word_sampling_indexes)
     logger.debug('get neg probs')
-    neg_empiric_probs, neg_context_probs = get_empiric_probs(d.negative_word_sampling_indexes)
+    neg_empiric_probs_dict, neg_context_probs_dict = get_empiric_probs(d.negative_word_sampling_indexes)
     logger.debug('Load embeddings')
     d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                       args.fasttext_file, None, logger)
@@ -116,7 +118,8 @@ if __name__ == "__main__":
         local_pos_perplexity = []
         local_neg_perplexity = []
         for i in range(args.n_samples):
-            pos, neg = run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs)
+            pos, neg = run_tensorflow(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict,
+                                      pos_context_probs_dict, neg_context_probs_dict)
             local_pos_perplexity.append(pos)
             local_neg_perplexity.append(neg)
         local_pos_perplexity = np.array(local_pos_perplexity)
