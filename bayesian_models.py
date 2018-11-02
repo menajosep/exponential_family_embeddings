@@ -165,8 +165,8 @@ class bayesian_emb_inference_model():
         self.prob_pos = self.y_pos.prob(1.0)
         self.prob_neg = self.y_neg.prob(0.0)
 
-        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, tf.log(self.prob_pos)), -1))
-        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, tf.log(self.prob_neg)), -1))
+        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, tf.log(tf.squeeze(self.prob_pos)))))
+        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, tf.log(tf.squeeze(self.prob_neg)))))
 
         self.perplexity_pos = tf.exp(self.entropy_pos)
         self.perplexity_neg = tf.exp(self.entropy_neg)
