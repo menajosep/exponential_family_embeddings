@@ -163,22 +163,18 @@ class bayesian_emb_inference_model():
         self.y_neg = Bernoulli(logits=self.n_eta)
 
         self.prob_pos = tf.squeeze(self.y_pos.prob(1.0))
+        self.prob_neg = tf.squeeze(self.y_neg.prob(0.0))
         self.mul_prob_pos = tf.multiply(self.prob_pos, self.pos_ctxt_probs)
+        self.mul_prob_neg = tf.multiply(self.prob_neg, self.neg_ctxt_probs)
 
-        self.prob_pos = tf.log(tf.reduce_sum(self.mul_prob_pos))
-        self.prob_neg = tf.log(tf.reduce_sum(tf.multiply(tf.squeeze(self.y_neg.prob(0.0)), self.neg_ctxt_probs)))
+        self.log_prob_pos = tf.log(tf.reduce_sum(self.mul_prob_pos))
+        self.log_prob_neg = tf.log(tf.reduce_sum(self.mul_prob_neg))
 
         self.pos_empiric_probs = tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.pos_ctxt_probs))
         self.neg_empiric_probs = tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.neg_ctxt_probs))
 
-        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.prob_pos)))
-        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.prob_neg)))
-
-
-        self.entropy_pos = tf.negative(
-            tf.reduce_sum(tf.multiply(self.pos_empiric_probs, tf.log(tf.squeeze(self.prob_pos)))))
-        self.entropy_neg = tf.negative(
-            tf.reduce_sum(tf.multiply(self.neg_empiric_probs, tf.log(tf.squeeze(self.prob_neg)))))
+        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.log_prob_pos)))
+        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.log_prob_neg)))
 
         self.perplexity_pos = tf.exp(self.entropy_pos)
         self.perplexity_neg = tf.exp(self.entropy_neg)
