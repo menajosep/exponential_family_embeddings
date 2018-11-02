@@ -32,7 +32,7 @@ def batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos
     return word_target, word_context, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs
 
 
-def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs):
+def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs):
     if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
             d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
         logger.debug('....starting predicting')
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         local_pos_perplexity = []
         local_neg_perplexity = []
         for i in range(args.n_samples):
-            pos, neg = run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs)
+            pos, neg = run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs)
             local_pos_perplexity.append(pos)
             local_neg_perplexity.append(neg)
         local_pos_perplexity = np.array(local_pos_perplexity)
