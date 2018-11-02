@@ -9,38 +9,35 @@ from bayesian_models import *
 MAX_SAMPLES_PER_WORD = 10000
 
 
-def batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict):
+def batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict):
     word_samples = []
     pos_empiric_probs, neg_empiric_probs = [], []
+    pos_ctxt_probs, neg_ctxt_probs = [], []
     word_index = d.dictionary[word]
     positive_word_sampling_indexes = d.positive_word_sampling_indexes[word_index]
     negative_word_sampling_indexes = d.negative_word_sampling_indexes[word_index]
     for positive_word_sampling_index in positive_word_sampling_indexes[:MAX_SAMPLES_PER_WORD]:
         word_samples.append((word_index, positive_word_sampling_index, 1))
-        if (word_index, positive_word_sampling_index) in pos_empiric_probs_dict:
-            pos_empiric_probs.append(pos_empiric_probs_dict[(word_index, positive_word_sampling_index)])
-        else:
-            pos_empiric_probs.append(0)
+        pos_empiric_probs.append(pos_empiric_probs_dict[(word_index, positive_word_sampling_index)])
+        pos_ctxt_probs.append(pos_context_probs_dict[positive_word_sampling_index])
     for negative_word_sampling_index in negative_word_sampling_indexes[:MAX_SAMPLES_PER_WORD]:
         word_samples.append((word_index, negative_word_sampling_index, 0))
-        if (word_index, negative_word_sampling_index) in neg_empiric_probs_dict:
-            neg_empiric_probs.append(neg_empiric_probs_dict[(word_index, negative_word_sampling_index)])
-        else:
-            neg_empiric_probs.append(0)
+        neg_empiric_probs.append(neg_empiric_probs_dict[(word_index, negative_word_sampling_index)])
+        neg_ctxt_probs.append(neg_context_probs_dict[negative_word_sampling_index])
     #shuffle(word_samples)
     target_words, context_words, labels = zip(*word_samples)
     labels = np.array(labels)
     word_target = np.array(target_words, dtype="int32")
     word_context = np.array(context_words, dtype="int32")
-    return word_target, word_context, labels, pos_empiric_probs, neg_empiric_probs
+    return word_target, word_context, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs
 
 
 def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs):
     if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
             d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
         logger.debug('....starting predicting')
-        target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs = \
-            batch_generator(word, d, pos_empiric_probs, neg_empiric_probs)
+        target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs = \
+            batch_generator(word, d, pos_empiric_probs, neg_empiric_probs, pos_context_probs, neg_context_probs)
 
         perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
             m.target_placeholder: target_words,
@@ -48,7 +45,9 @@ def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs):
             m.labels_placeholder: labels,
             m.batch_size: len(labels),
             m.pos_empiric_probs: pos_empiric_probs,
-            m.neg_empiric_probs: neg_empiric_probs
+            m.neg_empiric_probs: neg_empiric_probs,
+            m.pos_ctxt_probs: pos_ctxt_probs,
+            m.neg_ctxt_probs: neg_ctxt_probs
         })
         return perplexity_pos, perplexity_neg
     else:
@@ -60,7 +59,7 @@ def get_empiric_probs(word_sampling_indexes):
     empiric_probs = dict()
     ctxt_counter = dict()
     for target, ctxt_array in word_sampling_indexes.items():
-        for ctx in ctxt_array[:MAX_SAMPLES_PER_WORD]:
+        for ctx in ctxt_array:
             if ctx not in ctxt_counter:
                 ctxt_counter[ctx] = 1
             else:
@@ -71,7 +70,10 @@ def get_empiric_probs(word_sampling_indexes):
                 raw_empiric_probs[(target, ctx)] += 1
     for pair, count in raw_empiric_probs.items():
         empiric_probs[pair] = count / ctxt_counter[pair[1]]
-    return empiric_probs
+
+    context_probs = {k: v / sum(ctxt_counter.values()) for k, v in ctxt_counter.items()}
+
+    return empiric_probs, context_probs
 
 
 if __name__ == "__main__":
@@ -82,9 +84,9 @@ if __name__ == "__main__":
     logger.debug('Load data')
     d = pickle.load(open(args.in_file, "rb+"))
     logger.debug('get pos probs')
-    pos_empiric_probs = get_empiric_probs(d.positive_word_sampling_indexes)
+    pos_empiric_probs, pos_context_probs = get_empiric_probs(d.positive_word_sampling_indexes)
     logger.debug('get neg probs')
-    neg_empiric_probs = get_empiric_probs(d.negative_word_sampling_indexes)
+    neg_empiric_probs, neg_context_probs = get_empiric_probs(d.negative_word_sampling_indexes)
     logger.debug('Load embeddings')
     d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                       args.fasttext_file, None, logger)
