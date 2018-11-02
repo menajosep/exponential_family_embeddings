@@ -54,6 +54,21 @@ def run_tensorflow(word, d, pos_empiric_probs, neg_empiric_probs):
     else:
         return -1, -1
 
+
+def get_empiric_probs(word_sampling_indexes, reverse_dictionary, counter):
+    raw_empiric_probs = dict()
+    empiric_probs = dict()
+    for target, ctxt_array in word_sampling_indexes.items():
+        for ctx in ctxt_array[:MAX_SAMPLES_PER_WORD]:
+            ctx_count = counter[reverse_dictionary[ctx]]
+            if (target, ctx) not in empiric_probs:
+                raw_empiric_probs[(target, ctx)] = 1
+            else:
+                raw_empiric_probs[(target, ctx)] += 1
+            empiric_probs[(target, ctx)] = 1. * raw_empiric_probs[(target, ctx)] / ctx_count
+    return empiric_probs
+
+
 if __name__ == "__main__":
     logger = get_logger()
 
@@ -61,8 +76,10 @@ if __name__ == "__main__":
     os.makedirs(dir_name)
     logger.debug('Load data')
     d = pickle.load(open(args.in_file, "rb+"))
-    pos_empiric_probs = pickle.load(open(args.pos_empiric_probs, "rb+"))
-    neg_empiric_probs = pickle.load(open(args.neg_empiric_probs, "rb+"))
+    logger.debug('get pos probs')
+    pos_empiric_probs = get_empiric_probs(d.positive_word_sampling_indexes, d.reverse_dictionary, d.counter)
+    logger.debug('get neg probs')
+    neg_empiric_probs = get_empiric_probs(d.negative_word_sampling_indexes, d.reverse_dictionary, d.counter)
     logger.debug('Load embeddings')
     d.load_embeddings(args.emb_type, args.word2vec_file, args.glove_file,
                       args.fasttext_file, None, logger)

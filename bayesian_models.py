@@ -120,8 +120,8 @@ class bayesian_emb_inference_model():
                 self.context_placeholder = tf.placeholder(tf.int32)
                 self.labels_placeholder = tf.placeholder(tf.int32)
                 self.batch_size = tf.placeholder(tf.int32)
-                self.pos_empiric_probs = tf.placeholder(tf.int32)
-                self.neg_empiric_probs = tf.placeholder(tf.int32)
+                self.pos_empiric_probs = tf.placeholder(tf.float32)
+                self.neg_empiric_probs = tf.placeholder(tf.float32)
 
             # Index Masks
             with tf.name_scope('priors'):
@@ -165,11 +165,11 @@ class bayesian_emb_inference_model():
         self.prob_pos = self.y_pos.prob(1.0)
         self.prob_neg = self.y_neg.prob(0.0)
 
-        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, tf.log(self.prob_pos, 2)), -1))
-        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, tf.log(self.prob_neg, 2)), -1))
+        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, tf.log(self.prob_pos)), -1))
+        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, tf.log(self.prob_neg)), -1))
 
-        self.perplexity_pos = tf.pow(2, self.entropy_pos)
-        self.perplexity_neg = tf.pow(2, self.entropy_neg)
+        self.perplexity_pos = tf.exp(self.entropy_pos)
+        self.perplexity_neg = tf.exp(self.entropy_neg)
 
 
         with self.sess.as_default():
