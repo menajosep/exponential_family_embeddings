@@ -44,8 +44,9 @@ def run_tensorflow(word, d):
 
 def get_perplexity(probs):
     probs = np.array(probs)
-    norm_probs = probs / np.sum(probs)
-    perplexity = np.exp(np.negative(np.sum(norm_probs * np.log(norm_probs))))
+    #norm_probs = probs / np.sum(probs)
+    entropy = np.negative(np.sum(np.log2(probs)/np.sum(probs)))
+    perplexity = np.power(2, entropy)
     return perplexity
 
 
