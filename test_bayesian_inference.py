@@ -40,8 +40,7 @@ def run_tensorflow(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_
         target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs = \
             batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict)
 
-        #perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
-        perplexity_pos, perplexity_neg = sess.run([m.mul_prob_pos], {
+        perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
             m.target_placeholder: target_words,
             m.context_placeholder: context_words,
             m.labels_placeholder: labels,
