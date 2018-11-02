@@ -169,15 +169,17 @@ class bayesian_emb_inference_model():
 
         self.log_prob_pos = tf.log(tf.reduce_sum(self.mul_prob_pos))
         self.log_prob_neg = tf.log(tf.reduce_sum(self.mul_prob_neg))
+        #
+        # self.pos_empiric_probs = tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.pos_ctxt_probs))
+        # self.neg_empiric_probs = tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.neg_ctxt_probs))
+        #
+        # self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.log_prob_pos)))
+        # self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.log_prob_neg)))
 
-        self.pos_empiric_probs = tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.pos_ctxt_probs))
-        self.neg_empiric_probs = tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.neg_ctxt_probs))
-
-        self.entropy_pos = tf.negative(tf.reduce_sum(tf.multiply(self.pos_empiric_probs, self.log_prob_pos)))
-        self.entropy_neg = tf.negative(tf.reduce_sum(tf.multiply(self.neg_empiric_probs, self.log_prob_neg)))
-
-        self.perplexity_pos = tf.exp(self.entropy_pos)
-        self.perplexity_neg = tf.exp(self.entropy_neg)
+        # self.perplexity_pos = tf.exp(self.entropy_pos)
+        # self.perplexity_neg = tf.exp(self.entropy_neg)
+        self.perplexity_pos = tf.exp(self.log_prob_pos)
+        self.perplexity_neg = tf.exp(self.log_prob_neg)
 
         with self.sess.as_default():
             tf.global_variables_initializer().run()
