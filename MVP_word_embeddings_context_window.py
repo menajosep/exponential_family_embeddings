@@ -1,3 +1,4 @@
+import argparse
 import collections
 import logging
 import os
@@ -52,7 +53,7 @@ def process_sentences_constructor(neg_samples: int, vocab_size: int, existing_bi
 
     def process_sentences(data):
         samples = list()
-        if CONTEXT_SIZE > 0:
+        if context_size > 0:
             # we traverse all the words in the book
             for i in tqdm(range(context_size, len(data) - (context_size + 1))):
                 # For the positive example we pick the letter and the letter after to get
@@ -65,7 +66,7 @@ def process_sentences_constructor(neg_samples: int, vocab_size: int, existing_bi
                     samples.append((word, context_word, 1))
                 # for each positive example we take NEGATIVE_SAMPLES negative samples
                 num_negs = 0
-                while num_negs < NEGATIVE_SAMPLES:
+                while num_negs < neg_samples:
                     random_word_index = random.randint(0, vocab_size - 1)
                     if (word, random_word_index) not in existing_bigrams:
                         num_negs += 1
@@ -79,8 +80,8 @@ def process_sentences_constructor(neg_samples: int, vocab_size: int, existing_bi
                 samples.append((word, next_word, 1))
                 # for each positive example we take NEGATIVE_SAMPLES negative samples
                 num_negs = 0
-                while num_negs < NEGATIVE_SAMPLES:
-                    random_word_index = random.randint(0, len(vocabulary) - 1)
+                while num_negs < neg_samples:
+                    random_word_index = random.randint(0, vocab_size - 1)
                     if (word, random_word_index) not in existing_bigrams:
                         num_negs += 1
                         samples.append((word, random_word_index, 0))
@@ -110,10 +111,10 @@ def apply_parallel(func: Callable,
         return transformed_data
 
 
-def parallel_process_text(bbe_data: List[str]) -> List[List[str]]:
+def parallel_process_text(bbe_data: List[str], negative_samples, vocab_size, existing_bigrams, context_size) -> List[List[str]]:
     """Apply cleaner -> tokenizer."""
     process_text = process_sentences_constructor(
-        NEGATIVE_SAMPLES, vocab_size, existing_bigrams, CONTEXT_SIZE)
+        negative_samples, vocab_size, existing_bigrams, context_size)
     return flatten_list(apply_parallel(process_text, bbe_data))
 
 
@@ -239,107 +240,131 @@ def get_learning_rates(initial_learning_rate, num_batches, num_epochs):
     return learning_rates
 
 
-NUM_EPOCHS = 50  # @param {type:"integer"}
-LEARNING_RATE = 1e-1  # @param {type:"number"}
-NEGATIVE_SAMPLES = 2  # @param {type:"slider", min:1, max:10, step:1}
-EMBEDDING_DIM = 200  # @param {type:"integer"}
-BATCH_SIZE = 1024  # @param {type:"number"}
-CONTEXT_SIZE = 0  # @param {type:"slider", min:1, max:10, step:1}
+def learn_embeddings(context_size, negative_samples, num_epochs,
+                     learning_rate,embedding_dim, batch_size, file_name):
+    NUM_EPOCHS = num_epochs  # @param {type:"integer"}
+    LEARNING_RATE = learning_rate  # @param {type:"number"}
+    NEGATIVE_SAMPLES = negative_samples  # @param {type:"slider", min:1, max:10, step:1}
+    EMBEDDING_DIM = embedding_dim  # @param {type:"integer"}
+    BATCH_SIZE = batch_size  # @param {type:"number"}
+    CONTEXT_SIZE = context_size  # @param {type:"slider", min:1, max:10, step:1}
 
-logger = get_logger()
-dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
+    logger = get_logger()
+    dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
 
-os.makedirs(dir_name)
-bbe_data = list()
-words = list()
-existing_bigrams = list()
-file_name = '/Users/jose.mena/dev/personal/data/basic_english/bbe'
-logger.info('Loading data from {}'.format(file_name))
-with open(file_name) as f:
-    sentences = f.readlines()
-logger.info('Loaded {} lines'.format(len(sentences)))
-for sentence in sentences:
-    sentence_words = re.split(r'\W+', sentence)
-    for word in sentence_words:
-        word = word.lower()
-        if not word.isalpha():
-            word = '#NUMBER'
-        words.append(word)
-logger.info('Loaded {} words'.format(len(words)))
-count = [['UNK', 0]]
-count.extend(collections.Counter(words).most_common(1000 - 1))
-dictionary = dict()
-counter = dict()
-for character, _ in count:
-    dictionary[character] = len(dictionary)
-    counter[character] = _
-# we also create a dictionary that maps eahc id with the corresponing letter
-reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
-# we now create a vocabulary for our corpus, in this case the letters
-vocabulary = list(dictionary.keys())
+    os.makedirs(dir_name)
+    bbe_data = list()
+    words = list()
+    existing_bigrams = list()
+    logger.info('Loading data from {}'.format(file_name))
+    with open(file_name) as f:
+        sentences = f.readlines()
+    logger.info('Loaded {} lines'.format(len(sentences)))
+    for sentence in sentences:
+        sentence_words = re.split(r'\W+', sentence)
+        for word in sentence_words:
+            word = word.lower()
+            if not word.isalpha():
+                word = '#NUMBER'
+            words.append(word)
+    logger.info('Loaded {} words'.format(len(words)))
+    count = [['UNK', 0]]
+    count.extend(collections.Counter(words).most_common(1000 - 1))
+    dictionary = dict()
+    counter = dict()
+    for character, _ in count:
+        dictionary[character] = len(dictionary)
+        counter[character] = _
+    # we also create a dictionary that maps eahc id with the corresponing letter
+    reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+    # we now create a vocabulary for our corpus, in this case the letters
+    vocabulary = list(dictionary.keys())
 
-vocab_size = len(vocabulary)
-logger.info('Loaded dictionary of {} words'.format(vocab_size))
-unk_count = 0
-for word_index in range(len(words) - 1):
-    if words[word_index] in dictionary:
-        index = dictionary[words[word_index]]
-    else:
-        index = 0
-        unk_count += 1
-    bbe_data.append(index)
-    next_word = words[word_index + 1]
-    if next_word in dictionary:
-        next_word_index = dictionary[next_word]
-    else:
-        next_word_index = 0
-    existing_bigrams.append((index, next_word_index))
-bbe_data.append(next_word_index)
-count[0][1] = unk_count
-logger.info('{} OOV words'.format(unk_count))
-existing_bigrams = list(set(existing_bigrams))
-logger.info('{} existing bigrams'.format(len(existing_bigrams)))
-logger.info('Generating samples')
-bbe_samples = parallel_process_text(bbe_data[:1000])
-logger.info('{} samples generated'.format(len(bbe_samples)))
+    vocab_size = len(vocabulary)
+    logger.info('Loaded dictionary of {} words'.format(vocab_size))
+    unk_count = 0
+    for word_index in range(len(words) - 1):
+        if words[word_index] in dictionary:
+            index = dictionary[words[word_index]]
+        else:
+            index = 0
+            unk_count += 1
+        bbe_data.append(index)
+        next_word = words[word_index + 1]
+        if next_word in dictionary:
+            next_word_index = dictionary[next_word]
+        else:
+            next_word_index = 0
+        existing_bigrams.append((index, next_word_index))
+    bbe_data.append(next_word_index)
+    count[0][1] = unk_count
+    logger.info('{} OOV words'.format(unk_count))
+    existing_bigrams = list(set(existing_bigrams))
+    logger.info('{} existing bigrams'.format(len(existing_bigrams)))
+    logger.info('Generating samples')
+    bbe_samples = parallel_process_text(bbe_data[:1000], NEGATIVE_SAMPLES, vocab_size, existing_bigrams, CONTEXT_SIZE)
+    logger.info('{} samples generated'.format(len(bbe_samples)))
 
-book_data = word_data(bbe_samples)
-book_data.batch = book_data.batch_generator(NEGATIVE_SAMPLES, BATCH_SIZE)
-n_batches = get_n_batches_per_epoch(NEGATIVE_SAMPLES, NUM_EPOCHS, BATCH_SIZE, len(bbe_samples))
-num_iters = n_batches * NUM_EPOCHS
-learning_rates = get_learning_rates(LEARNING_RATE, n_batches, NUM_EPOCHS)
-logger.info('training for {} epochs, {} batch per epoch, total of iters {}'.format(NUM_EPOCHS, n_batches, num_iters))
-g1 = tf.Graph()
-with g1.as_default() as g:
-    with tf.Session(graph=g) as sess:
-        m = emb_model(vocab_size, EMBEDDING_DIM, sess,
-                      learning_rates, num_iters,
-                      NEGATIVE_SAMPLES, BATCH_SIZE, dir_name)
-        init = tf.global_variables_initializer()
-        sess.run(init)
-        iteration = 0
-        for epoch in range(NUM_EPOCHS):
-            logger.info('epoch {} of {}'.format(epoch + 1, NUM_EPOCHS))
-            # for batch in tqdm(range(n_batches), desc='epoch {} of {}'.format(epoch, num_epochs)):
-            for batch in range(n_batches):
-                _, log_likelihood, rho_embeddings, alpha_embeddings, summaries = sess.run(
-                    [m.train_op, m.log_likelihood, m.rho_embeddings, m.alpha_embeddings, m.summaries],
-                    book_data.feed(
-                        m.target_placeholder,
-                        m.context_placeholder,
-                        m.labels_placeholder,
-                        m.learning_rate_placeholder,
-                        learning_rates[iteration]
+    book_data = word_data(bbe_samples)
+    book_data.batch = book_data.batch_generator(NEGATIVE_SAMPLES, BATCH_SIZE)
+    n_batches = get_n_batches_per_epoch(NEGATIVE_SAMPLES, NUM_EPOCHS, BATCH_SIZE, len(bbe_samples))
+    num_iters = n_batches * NUM_EPOCHS
+    learning_rates = get_learning_rates(LEARNING_RATE, n_batches, NUM_EPOCHS)
+    logger.info('training for {} epochs, {} batch per epoch, total of iters {}'.format(NUM_EPOCHS, n_batches, num_iters))
+    g1 = tf.Graph()
+    with g1.as_default() as g:
+        with tf.Session(graph=g) as sess:
+            m = emb_model(vocab_size, EMBEDDING_DIM, sess,
+                          learning_rates, num_iters,
+                          NEGATIVE_SAMPLES, BATCH_SIZE, dir_name)
+            init = tf.global_variables_initializer()
+            sess.run(init)
+            iteration = 0
+            for epoch in range(NUM_EPOCHS):
+                logger.info('epoch {} of {}'.format(epoch + 1, NUM_EPOCHS))
+                # for batch in tqdm(range(n_batches), desc='epoch {} of {}'.format(epoch, num_epochs)):
+                for batch in range(n_batches):
+                    _, log_likelihood, rho_embeddings, alpha_embeddings, summaries = sess.run(
+                        [m.train_op, m.log_likelihood, m.rho_embeddings, m.alpha_embeddings, m.summaries],
+                        book_data.feed(
+                            m.target_placeholder,
+                            m.context_placeholder,
+                            m.labels_placeholder,
+                            m.learning_rate_placeholder,
+                            learning_rates[iteration]
+                        )
                     )
-                )
-                m.train_writer.add_summary(summaries, iteration)
-                iteration += 1
-            m.saver.save(sess, os.path.join(dir_name, "model.ckpt"), iteration)
+                    m.train_writer.add_summary(summaries, iteration)
+                    iteration += 1
+                m.saver.save(sess, os.path.join(dir_name, "model.ckpt"), iteration)
 
-logger.info('store results in {}'.format(os.path.join(dir_name, "results.db")))
-with open(os.path.join(dir_name, "results.db"), "wb") as dill_file:
-    dill.dump((dictionary, counter, vocabulary, existing_bigrams, rho_embeddings, alpha_embeddings), dill_file)
-logger.info('store vocab in {}'.format(os.path.join(dir_name, "vocab.tsv")))
-with open(os.path.join(dir_name, "vocab.tsv"), 'w') as txt:
-    for char in vocabulary:
-        txt.write(char + '\n')
+    logger.info('store results in {}'.format(os.path.join(dir_name, "results.db")))
+    with open(os.path.join(dir_name, "results.db"), "wb") as dill_file:
+        dill.dump((dictionary, counter, vocabulary, existing_bigrams, rho_embeddings, alpha_embeddings), dill_file)
+    logger.info('store vocab in {}'.format(os.path.join(dir_name, "vocab.tsv")))
+    with open(os.path.join(dir_name, "vocab.tsv"), 'w') as txt:
+        for char in vocabulary:
+            txt.write(char + '\n')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="run the clasifier")
+    parser.add_argument('--context_size', type=int, default=0,
+                        help='size of context window, use 0 for only taking the nex word into account')
+    parser.add_argument('--negative_samples', type=int, default=1,
+                        help='number of negative samples')
+    parser.add_argument('--num_epochs', type=int, default=10,
+                        help='number of epochs')
+    parser.add_argument('--learning_rate', type=float, default=1e-1,
+                        help='initial learning rate')
+    parser.add_argument('--embedding_dim', type=int, default=100,
+                        help='number of dimensions for vectors')
+    parser.add_argument('--batch_size', type=int, default=1024,
+                        help='size of the batches')
+    parser.add_argument('--file_name', type=str, default=None,
+                        help='name of the data file')
+
+    args = parser.parse_args()
+
+    learn_embeddings(args.context_size, args.negative_samples, args.num_epochs,
+                     args.learning_rate, args.embedding_dim, args.batch_size, args.file_name)
