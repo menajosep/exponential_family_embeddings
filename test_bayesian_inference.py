@@ -34,25 +34,21 @@ def batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos
 
 
 def run_tensorflow(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict):
-    if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
-            d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
-        logger.debug('....starting predicting')
-        target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs = \
-            batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict)
+    logger.debug('....starting predicting')
+    target_words, context_words, labels, pos_empiric_probs, neg_empiric_probs, pos_ctxt_probs, neg_ctxt_probs = \
+        batch_generator(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict, pos_context_probs_dict, neg_context_probs_dict)
 
-        perplexity_pos, perplexity_neg = sess.run([m.perplexity_pos, m.perplexity_neg], {
-            m.target_placeholder: target_words,
-            m.context_placeholder: context_words,
-            m.labels_placeholder: labels,
-            m.batch_size: len(labels),
-            m.pos_empiric_probs: pos_empiric_probs,
-            m.neg_empiric_probs: neg_empiric_probs,
-            m.pos_ctxt_probs: pos_ctxt_probs,
-            m.neg_ctxt_probs: neg_ctxt_probs
-        })
-        return perplexity_pos, perplexity_neg
-    else:
-        return -1, -1
+    entropy_pos, entropy_neg = sess.run([m.pos_entropy, m.neg_entropy], {
+        m.target_placeholder: target_words,
+        m.context_placeholder: context_words,
+        m.labels_placeholder: labels,
+        m.batch_size: len(labels),
+        m.pos_empiric_probs: pos_empiric_probs,
+        m.neg_empiric_probs: neg_empiric_probs,
+        m.pos_ctxt_probs: pos_ctxt_probs,
+        m.neg_ctxt_probs: neg_ctxt_probs
+    })
+    return entropy_pos, entropy_neg
 
 
 def get_empiric_probs(word_sampling_indexes):
@@ -70,7 +66,7 @@ def get_empiric_probs(word_sampling_indexes):
             else:
                 raw_empiric_probs[(target, ctx)] += 1
     for pair, count in raw_empiric_probs.items():
-        empiric_probs[pair] = count / ctxt_counter[pair[1]]
+        empiric_probs[pair] = count / len(word_sampling_indexes)
 
     context_probs = {k: v / sum(ctxt_counter.values()) for k, v in ctxt_counter.items()}
 
@@ -101,8 +97,8 @@ if __name__ == "__main__":
         sigmas_array = pickle.load(open(args.sigmas, "rb+"))
         sigmas = sigmas_array[-1]
 
-    pos_perplexities = dict()
-    neg_perplexities = dict()
+    pos_entropies = list()
+    neg_entropies = list()
     sess = ed.get_session()
 
     # MODEL
@@ -113,30 +109,21 @@ if __name__ == "__main__":
     init = tf.global_variables_initializer()
     sess.run(init)
     for word in sorted(d.dictionary):
-        logger.debug('predicting ' + word)
-        local_pos_perplexity = []
-        local_neg_perplexity = []
-        for i in range(args.n_samples):
+        if len(d.positive_word_sampling_indexes[d.dictionary[word]]) > 0 and len(
+                d.negative_word_sampling_indexes[d.dictionary[word]]) > 0:
+            logger.debug('predicting ' + word)
             pos, neg = run_tensorflow(word, d, pos_empiric_probs_dict, neg_empiric_probs_dict,
-                                      pos_context_probs_dict, neg_context_probs_dict)
-            local_pos_perplexity.append(pos)
-            local_neg_perplexity.append(neg)
-        local_pos_perplexity = np.array(local_pos_perplexity)
-        local_neg_perplexity = np.array(local_neg_perplexity)
-        pos_perplexities[word] = {
-            "max" : local_pos_perplexity.max(),
-            "min": local_pos_perplexity.min(),
-            "loc": local_pos_perplexity.mean(),
-            "std": local_pos_perplexity.std(),
-        }
-        neg_perplexities[word] = {
-            "max": local_neg_perplexity.max(),
-            "min": local_neg_perplexity.min(),
-            "loc": local_neg_perplexity.mean(),
-            "std": local_neg_perplexity.std(),
-        }
-    logger.debug('Store data')
-    pickle.dump(pos_perplexities, open(dir_name + "/pos_perplexities.dat", "wb+"))
-    pickle.dump(neg_perplexities, open(dir_name + "/neg_perplexities.dat", "wb+"))
+                                          pos_context_probs_dict, neg_context_probs_dict)
+            pos_entropies.append(pos)
+            neg_entropies.append(neg)
+
+    pos_entropies = np.array(pos_entropies)
+
+    pos_perplexity = np.exp(2,-(np.sum(pos_entropies)/len(pos_entropies)))
+    print("positive perplexity {}".format(pos_perplexity))
+    neg_entropies = np.array(neg_entropies)
+    neg_perplexity = np.exp(2, -(np.sum(neg_entropies) / len(neg_entropies)))
+    print("negative perplexity {}".format(pos_perplexity))
+
 
     logger.debug('Done')
