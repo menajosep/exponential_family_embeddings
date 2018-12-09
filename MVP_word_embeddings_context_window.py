@@ -322,8 +322,8 @@ def learn_embeddings(context_size, negative_samples, num_epochs,
             iteration = 0
             for epoch in range(NUM_EPOCHS):
                 logger.info('epoch {} of {}'.format(epoch + 1, NUM_EPOCHS))
-                # for batch in tqdm(range(n_batches), desc='epoch {} of {}'.format(epoch, num_epochs)):
-                for batch in range(n_batches):
+                for batch in tqdm(range(n_batches), desc='epoch {} of {}'.format(epoch, num_epochs)):
+                #for batch in range(n_batches):
                     _, log_likelihood, rho_embeddings, alpha_embeddings, summaries = sess.run(
                         [m.train_op, m.log_likelihood, m.rho_embeddings, m.alpha_embeddings, m.summaries],
                         book_data.feed(
