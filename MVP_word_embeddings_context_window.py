@@ -302,7 +302,7 @@ def learn_embeddings(context_size, negative_samples, num_epochs,
     existing_bigrams = list(set(existing_bigrams))
     logger.info('{} existing bigrams'.format(len(existing_bigrams)))
     logger.info('Generating samples')
-    bbe_samples = parallel_process_text(bbe_data[:1000], NEGATIVE_SAMPLES, vocab_size, existing_bigrams, CONTEXT_SIZE)
+    bbe_samples = parallel_process_text(bbe_data, NEGATIVE_SAMPLES, vocab_size, existing_bigrams, CONTEXT_SIZE)
     logger.info('{} samples generated'.format(len(bbe_samples)))
 
     book_data = word_data(bbe_samples)
