@@ -20,58 +20,6 @@ from itertools import chain
 import dill
 
 
-NUM_EPOCHS = 50 #@param {type:"integer"}
-LEARNING_RATE = 1e-1 #@param {type:"number"}
-NEGATIVE_SAMPLES = 2 #@param {type:"slider", min:1, max:10, step:1}
-EMBEDDING_DIM = 200 #@param {type:"integer"}
-BATCH_SIZE = 1024 #@param {type:"number"}
-CONTEXT_SIZE = 1 #@param {type:"slider", min:1, max:10, step:1}
-
-bbe_data = list()
-words = list()
-existing_bigrams = list()
-with open('/Users/jose.mena/dev/personal/data/basic_english/bbe') as f:
-  sentences = f.readlines()
-for sentence in sentences:
-  sentence_words = re.split(r'\W+', sentence)
-  for word in sentence_words:
-    word = word.lower()
-    if not word.isalpha():
-      word = '#NUMBER'
-    words.append(word)
-count = [['UNK', 0]]
-count.extend(collections.Counter(words).most_common(1000 - 1))
-dictionary = dict()
-counter = dict()
-for character, _ in count:
-  dictionary[character] = len(dictionary)
-  counter[character] = _
-# we also create a dictionary that maps eahc id with the corresponing letter
-reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
-# we now create a vocabulary for our corpus, in this case the letters
-vocabulary = dictionary.keys()
-
-vocab_size = len(vocabulary)
-
-unk_count = 0
-for word_index in range(len(words)-1):
-    if words[word_index] in dictionary:
-        index = dictionary[words[word_index]]
-    else:
-        index = 0
-        unk_count += 1
-    bbe_data.append(index)
-    next_word = words[word_index+1]
-    if next_word in dictionary:
-        next_word_index = dictionary[next_word]
-    else:
-        next_word_index = 0
-    existing_bigrams.append((index,next_word_index))
-bbe_data.append(next_word_index)
-count[0][1] = unk_count
-existing_bigrams = list(set(existing_bigrams))
-
-
 def flatten_list(listoflists):
     return list(chain.from_iterable(listoflists))
 
@@ -129,8 +77,6 @@ def parallel_process_text(bbe_data: List[str]) -> List[List[str]]:
     process_text = process_sentences_constructor(
         NEGATIVE_SAMPLES, vocab_size, existing_bigrams, CONTEXT_SIZE)
     return flatten_list(apply_parallel(process_text, bbe_data))
-
-bbe_samples = parallel_process_text(bbe_data)
 
 
 class word_data():
@@ -236,14 +182,13 @@ class emb_model():
         with graph.as_default():
             tf.global_variables_initializer().run()
 
-dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
-os.makedirs(dir_name)
 
 def get_n_batches_per_epoch(ns, n_epochs, batch_size, data_size):
   n_batches = (data_size*(int(ns) +1)) / batch_size
   if data_size % batch_size > 0:
       n_batches += 1
   return int(n_batches)
+
 
 def get_learning_rates(initial_learning_rate, num_batches, num_epochs):
   learning_rates = []
@@ -254,6 +199,63 @@ def get_learning_rates(initial_learning_rate, num_batches, num_epochs):
     if epoch in [0,1]:
       learning_rate *= decay_factor
   return learning_rates
+
+
+NUM_EPOCHS = 50 #@param {type:"integer"}
+LEARNING_RATE = 1e-1 #@param {type:"number"}
+NEGATIVE_SAMPLES = 2 #@param {type:"slider", min:1, max:10, step:1}
+EMBEDDING_DIM = 200 #@param {type:"integer"}
+BATCH_SIZE = 1024 #@param {type:"number"}
+CONTEXT_SIZE = 1 #@param {type:"slider", min:1, max:10, step:1}
+
+bbe_data = list()
+words = list()
+existing_bigrams = list()
+with open('/Users/jose.mena/dev/personal/data/basic_english/bbe') as f:
+  sentences = f.readlines()
+for sentence in sentences:
+  sentence_words = re.split(r'\W+', sentence)
+  for word in sentence_words:
+    word = word.lower()
+    if not word.isalpha():
+      word = '#NUMBER'
+    words.append(word)
+count = [['UNK', 0]]
+count.extend(collections.Counter(words).most_common(1000 - 1))
+dictionary = dict()
+counter = dict()
+for character, _ in count:
+  dictionary[character] = len(dictionary)
+  counter[character] = _
+# we also create a dictionary that maps eahc id with the corresponing letter
+reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
+# we now create a vocabulary for our corpus, in this case the letters
+vocabulary = dictionary.keys()
+
+vocab_size = len(vocabulary)
+
+unk_count = 0
+for word_index in range(len(words)-1):
+    if words[word_index] in dictionary:
+        index = dictionary[words[word_index]]
+    else:
+        index = 0
+        unk_count += 1
+    bbe_data.append(index)
+    next_word = words[word_index+1]
+    if next_word in dictionary:
+        next_word_index = dictionary[next_word]
+    else:
+        next_word_index = 0
+    existing_bigrams.append((index,next_word_index))
+bbe_data.append(next_word_index)
+count[0][1] = unk_count
+existing_bigrams = list(set(existing_bigrams))
+
+bbe_samples = parallel_process_text(bbe_data)
+
+dir_name = 'fits/fit' + time.strftime("%y_%m_%d_%H_%M_%S")
+os.makedirs(dir_name)
 
 book_data = word_data(bbe_samples)
 book_data.batch = book_data.batch_generator(NEGATIVE_SAMPLES, BATCH_SIZE)
@@ -290,3 +292,6 @@ with g1.as_default() as g:
 with open(os.path.join(dir_name, "results.db"), "wb") as dill_file:
     dill.dump((dictionary, counter, vocabulary, existing_bigrams, rho_embeddings, alpha_embeddings), dill_file)
 
+with open(dir_name+'/vocab.tsv', 'w') as txt:
+  for char in vocabulary:
+      txt.write(char+'\n')
