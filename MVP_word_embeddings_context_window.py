@@ -232,7 +232,7 @@ def get_n_batches_per_epoch(ns, n_epochs, batch_size, data_size):
 def get_learning_rates(initial_learning_rate, num_batches, num_epochs):
     learning_rates = []
     learning_rate = initial_learning_rate
-    decay_factor = 1e-1
+    decay_factor = 1#1e-1
     for epoch in range(num_epochs):
         learning_rates.extend([learning_rate] * num_batches)
         if epoch in [0, 1]:
