@@ -122,9 +122,9 @@ def count_bigrams(context_size, file_name, out_file_name):
     count.extend(collections.Counter(words).most_common(1000 - 1))
     dictionary = dict()
     counter = dict()
-    for character, _ in count:
-        dictionary[character] = len(dictionary)
-        counter[character] = _
+    for word, _ in count:
+        dictionary[word] = len(dictionary)
+        counter[word] = _
     # we also create a dictionary that maps eahc id with the corresponing letter
     reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     # we now create a vocabulary for our corpus, in this case the letters
@@ -148,6 +148,7 @@ def count_bigrams(context_size, file_name, out_file_name):
         existing_bigrams.append((index, next_word_index))
     text_data.append(next_word_index)
     count[0][1] = unk_count
+    counter['UNK'] = unk_count
     logger.info('{} OOV words'.format(unk_count))
     existing_bigrams = list(set(existing_bigrams))
     logger.info('{} existing bigrams'.format(len(existing_bigrams)))
@@ -171,7 +172,7 @@ def count_bigrams(context_size, file_name, out_file_name):
             next_word_bigrams_counter[sample] = 1
     logger.info('store bigrams_counter in {}'.format(os.path.join(dir_name, out_file_name)))
     with open(os.path.join(dir_name, out_file_name), "wb") as dill_file:
-        dill.dump((count, bigrams_counter, next_word_bigrams_counter), dill_file)
+        dill.dump((counter, bigrams_counter, next_word_bigrams_counter), dill_file)
 
 
 
