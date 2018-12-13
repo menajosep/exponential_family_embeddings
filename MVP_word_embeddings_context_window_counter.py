@@ -165,7 +165,7 @@ def count_bigrams(context_size, file_name, out_file_name):
     logger.info('{} text_next_word_bigrams counted'.format(len(text_next_word_bigrams)))
     next_word_bigrams_counter = dict()
     for sample in text_next_word_bigrams:
-        if sample in bigrams_counter:
+        if sample in next_word_bigrams_counter:
             next_word_bigrams_counter[sample] += 1
         else:
             next_word_bigrams_counter[sample] = 1
