@@ -262,7 +262,7 @@ def learn_embeddings(context_size, negative_samples, num_epochs,
     logger.info('Loaded {} lines'.format(len(sentences)))
     for sentence in sentences:
         sentence_words = re.split(r'\W+', sentence)
-        for word in sentence_words:
+        for word in sentence_words[3:]:
             word = word.lower()
             if not word.isalpha():
                 word = '#NUMBER'

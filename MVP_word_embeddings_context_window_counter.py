@@ -112,7 +112,7 @@ def count_bigrams(context_size, file_name, out_file_name):
     logger.info('Loaded {} lines'.format(len(sentences)))
     for sentence in sentences:
         sentence_words = re.split(r'\W+', sentence)
-        for word in sentence_words:
+        for word in sentence_words[3:]:
             word = word.lower()
             if not word.isalpha():
                 word = '#NUMBER'
