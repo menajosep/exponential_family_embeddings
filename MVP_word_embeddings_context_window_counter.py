@@ -2,7 +2,6 @@ import argparse
 import collections
 import logging
 import os
-import random
 import re
 import time
 from itertools import chain
@@ -10,14 +9,8 @@ from math import ceil
 from typing import List, Callable, Any
 
 import dill
-import numpy as np
-import tensorflow as tf
 from more_itertools import chunked
 from pathos.multiprocessing import Pool, cpu_count
-from tensorflow.contrib.tensorboard.plugins import projector
-from tensorflow.python.framework import dtypes
-from tensorflow.python.ops import init_ops
-from tensorflow.python.ops import variable_scope
 from tqdm import tqdm
 
 
