@@ -56,13 +56,14 @@ def process_sentences_constructor(context_size: int):
                 next_words = data[i + 1:i + context_size + 1]
                 context_words = prev_words + next_words
                 for context_word in context_words:
-                    samples.append((word, context_word, 1))
+                    samples.append((word, context_word))
+        else:
             for i in tqdm(range(len(data) - 2)):
                 # For the positive example we pick the letter and the letter after to get
                 # the positive bigram
                 word = data[i]
                 next_word = data[i + 1]
-                samples.append((word, next_word, 1))
+                samples.append((word, next_word))
         return samples
 
     return process_sentences
