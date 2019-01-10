@@ -380,11 +380,13 @@ def learn_embeddings(context_size, num_epochs,
                     m.train_writer.add_summary(summaries, iteration)
                     iteration += 1
                 m.saver.save(sess, os.path.join(dir_name, "model.ckpt"), iteration)
+            with tf.variable_scope('variance', reuse=True):
+                variance_weights = tf.get_variable('kernel').eval()
 
     logger.info('store results in {}'.format(os.path.join(dir_name, "results.db")))
     with open(os.path.join(dir_name, "results.db"), "wb") as dill_file:
         dill.dump((dictionary, counter, vocabulary,
-                   unique_existing_bigrams, rho_embeddings, alpha_embeddings), dill_file)
+                   unique_existing_bigrams, rho_embeddings, alpha_embeddings, variance_weights), dill_file)
 
 
 
